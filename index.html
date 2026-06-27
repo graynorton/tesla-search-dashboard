@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <title>Tesla — 18 matches</title>
 <style>
-  :root { --bg:#0f1115; --card:#1a1d24; --fg:#e8eaed; --muted:#9aa0a6; --accent:#3b82f6; --warn:#f59e0b; }
-  @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --fg:#1a1d24; --muted:#5f6368; } }
+  :root { --bg:#0f1115; --card:#1a1d24; --fg:#e8eaed; --muted:#9aa0a6; --accent:#3b82f6; --warn:#f59e0b; --chip:#262b34; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --fg:#1a1d24; --muted:#5f6368; --chip:#eef0f3; } }
   * { box-sizing:border-box; }
   body { margin:0 auto; max-width:760px; padding:20px; background:var(--bg); color:var(--fg);
          font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
@@ -35,11 +35,37 @@
   .acc { color:var(--warn); font-weight:600; }
   .empty { color:var(--muted); }
   footer { color:var(--muted); font-size:12px; margin-top:24px; text-align:center; }
+
+  .srcstatus { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 10px; }
+  .src-chip { position:relative; font-size:12px; padding:4px 9px; border-radius:8px;
+              background:var(--chip,var(--card)); color:var(--fg); display:inline-flex;
+              align-items:center; gap:6px; cursor:pointer; outline:none; }
+  .src-chip::before { content:""; width:8px; height:8px; border-radius:50%;
+                      background:var(--accent); flex:none; }
+  .src-chip.warn::before { background:var(--warn); }
+  .src-chip.down::before { background:#ef4444; }
+  .src-chip:focus-visible { box-shadow:0 0 0 2px var(--accent); }
+  .src-pop { position:absolute; top:calc(100% + 6px); left:0; z-index:20;
+             min-width:200px; max-width:280px; background:var(--card); color:var(--fg);
+             border:1px solid var(--muted); border-radius:10px; padding:9px 11px;
+             font-size:12px; line-height:1.5; font-weight:400; text-align:left;
+             white-space:normal; box-shadow:0 6px 18px rgba(0,0,0,.32); display:none; }
+  .src-chip:hover .src-pop, .src-chip:focus-within .src-pop,
+  .src-chip.open .src-pop { display:block; }
+  .src-pop .hd { margin-bottom:4px; }
+  .src-pop .ln { margin:1px 0; }
+  .src-pop .k { color:var(--muted); }
+  .srcbanner { background:#3a1414; color:#ffb4b4; border-radius:10px; padding:8px 12px;
+               font-size:13px; margin-bottom:10px; }
+  .srcbanner div + div { margin-top:4px; }
+  @media (prefers-color-scheme: light){ .srcbanner{ background:#ffe6e6; color:#8a1f1f; } }
 </style>
 </head>
 <body>
   <h1>Tesla used-inventory matches</h1>
-  <div class="sub">Showing <span id="count">18</span> of 18 cars · updated Jun 26, 2026 at 4:13 PM PDT</div>
+  <div class="sub">Showing <span id="count">18</span> of 18 cars · updated Jun 26, 2026 at 5:03 PM PDT</div>
+  <div class="srcstatus"><span class="src-chip down" tabindex="0" role="button" aria-expanded="false">Tesla · paused<span class="src-pop" role="tooltip"><div class="hd"><b>Tesla</b> · paused</div><div class="ln">Paused on a cooldown after repeated failures.</div><div class="ln"><span class="k">Next attempt</span> <time class="rel" datetime="2026-06-27T11:12:00+00:00">…</time></div></span></span><span class="src-chip " tabindex="0" role="button" aria-expanded="false">Cargurus<span class="src-pop" role="tooltip"><div class="hd"><b>Cargurus</b> · OK</div><div class="ln">Fetching normally.</div><div class="ln"><span class="k">Last response</span> <time class="rel" datetime="2026-06-26T23:59:58+00:00">…</time></div><div class="ln"><span class="k">Last listings</span> <time class="rel" datetime="2026-06-26T23:59:58+00:00">…</time></div><div class="ln"><span class="k">Showing</span> 18 listings</div></span></span><span class="src-chip warn" tabindex="0" role="button" aria-expanded="false">Craigslist · no data<span class="src-pop" role="tooltip"><div class="hd"><b>Craigslist</b> · no data</div><div class="ln">Responding, but returning no listings (possible soft block).</div><div class="ln"><span class="k">Last response</span> <time class="rel" datetime="2026-06-26T23:59:58+00:00">…</time></div></span></span></div>
+  <div class="srcbanner"><div>⚠️ <b>Tesla</b> data last confirmed <time class="rel" datetime="">…</time> — some of its listings may no longer be available.</div><div>⚠️ <b>Craigslist</b> data last confirmed <time class="rel" datetime="2026-06-26T23:59:58+00:00">…</time> — some of its listings may no longer be available.</div></div>
 
     <a class="card" href="https://www.cargurus.com/Cars/link/450916082" target="_blank" rel="noopener" data-sources="cargurus" data-odo="">
       <div class="price">$19,500</div>
@@ -181,6 +207,38 @@
   });
   if (range) range.addEventListener('input', apply);
   apply();
+})();
+</script>
+<script>
+(function(){
+  function rel(iso){
+    if(!iso) return "an unknown time";
+    var d=(new Date(iso).getTime()-Date.now())/1000;   // >0 => future
+    var fut=d>=0, s=Math.abs(d), out;
+    if(s<90){ out="just now"; }
+    else { var m=s/60; if(m<90){ out=Math.round(m)+" min"; }
+      else { var h=m/60; if(h<36){ out=Math.round(h)+" hr"; }
+        else { out=Math.round(h/24)+" days"; } } }
+    if(out==="just now") return out;
+    return fut ? "in ~"+out : out+" ago";
+  }
+  document.querySelectorAll("time.rel").forEach(function(t){
+    t.textContent=rel(t.getAttribute("datetime"));
+  });
+  function closeAll(){
+    document.querySelectorAll(".src-chip.open").forEach(function(o){
+      o.classList.remove("open"); o.setAttribute("aria-expanded","false");
+    });
+  }
+  document.querySelectorAll(".src-chip").forEach(function(c){
+    c.addEventListener("click", function(e){
+      e.stopPropagation();
+      var open=c.classList.contains("open");
+      closeAll();
+      if(!open){ c.classList.add("open"); c.setAttribute("aria-expanded","true"); }
+    });
+  });
+  document.addEventListener("click", closeAll);
 })();
 </script>
 </body>
