@@ -1,0 +1,26 @@
+# Netlify config for the CARS (used-Tesla) dashboard intent inbox (#14).
+#
+# Same single-origin shape as the SF-rentals site (../netlify.toml): Netlify
+# deploys from the cars dashboard GitHub repo — the SAME repo the cars monitor's
+# GitPagesPublisher pushes index.html into. The static site is served as-is (no
+# build step); this file only adds the Functions + intent inbox.
+#
+# The FUNCTIONS THEMSELVES ARE SHARED with the homes site — they are fully
+# domain-agnostic (validate an intent envelope, store it in a Blobs inbox keyed by
+# intent_id, drain it under a read secret). Do NOT fork them. Since #10 + #49 the
+# cars GitPagesPublisher COPIES the scaffolding into the cars dashboard repo on
+# publish: the shared JS + Functions from the common ../ (`netlify/`), and THIS
+# per-domain config (netlify.toml + package.json) from `netlify/cars/` (the cars
+# run.py passes assets_dir=netlify/cars). It is folded into the publish signature,
+# so an edit here flips the sig and the normal gated push carries it — no more
+# hand-copy at deploy time. The two sites differ only in their site instance + the
+# two env-var secrets (a separate Blobs store per site) and the client's
+# ANNOTATE_CONFIG.lsKey ("cars-optimistic-v1"), set by render.py.
+
+[build]
+  command = ""
+  publish = "."
+
+[functions]
+  directory = "functions"
+  node_bundler = "esbuild"

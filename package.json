@@ -1,0 +1,9 @@
+{
+  "name": "cars-dashboard-functions",
+  "private": true,
+  "type": "module",
+  "description": "Netlify Functions for the used-Tesla dashboard intent inbox (#14). The function source is shared with the SF-rentals site — copy ../functions/*.mjs alongside this at deploy time.",
+  "dependencies": {
+    "@netlify/blobs": ">=7"
+  }
+}

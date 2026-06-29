@@ -9,6 +9,9 @@
   :root { --bg:#0f1115; --card:#1a1d24; --fg:#e8eaed; --muted:#9aa0a6; --accent:#3b82f6; --warn:#f59e0b; --chip:#262b34; }
   @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --fg:#1a1d24; --muted:#5f6368; --chip:#eef0f3; } }
   * { box-sizing:border-box; }
+  /* the JS toggles contextual controls (view-bar actions) via the `hidden`
+     attribute; this must win over their explicit display (flex). */
+  [hidden] { display:none !important; }
   body { margin:0 auto; max-width:760px; padding:20px; background:var(--bg); color:var(--fg);
          font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   h1 { font-size:20px; margin:0 0 4px; }
@@ -46,6 +49,24 @@
   .acc { color:var(--warn); font-weight:600; }
   .empty { color:var(--muted); }
   footer { color:var(--muted); font-size:12px; margin-top:24px; text-align:center; }
+  /* saved-views bar */
+  .viewbar { margin:0 0 14px; }
+  .viewset { display:inline-flex; align-items:center; gap:3px; background:var(--chip);
+             border-radius:10px; padding:3px 4px; max-width:100%; flex-wrap:wrap; }
+  .viewset select { font:inherit; font-size:13px; padding:4px 7px; border-radius:8px;
+             border:1px solid transparent; background:transparent; color:var(--fg);
+             max-width:60vw; }
+  .viewset .dirty-dot { width:7px; height:7px; border-radius:50%; background:var(--warn); margin:0 2px; flex:none; }
+  .viewset .vbtn { display:inline-flex; align-items:center; background:transparent; border:none;
+             color:var(--muted); cursor:pointer; padding:5px 6px; border-radius:7px; line-height:0; }
+  .viewset .vbtn:hover { background:rgba(128,128,128,.16); color:var(--accent); }
+  .viewset .vbtn.danger:hover { color:var(--warn); }
+  .staronly { display:inline-flex; align-items:center; gap:5px; font-size:13px; color:var(--muted); cursor:pointer; }
+  /* star button overlay on each card */
+  .card { position:relative; }
+  .star { position:absolute; top:12px; right:12px; z-index:2; background:transparent; border:none;
+          font-size:20px; line-height:1; cursor:pointer; color:var(--muted); padding:2px 4px; }
+  .star.on { color:var(--accent); }
 
   .srcstatus { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 10px; }
   .src-chip { position:relative; font-size:12px; padding:4px 9px; border-radius:8px;
@@ -74,952 +95,1111 @@
 </head>
 <body>
   <h1>Tesla used-inventory matches</h1>
-  <div class="sub">Showing <span id="count">158</span> of 158 cars · updated Jun 29, 2026 at 2:22 PM PDT</div>
+  <div class="sub">Showing <span id="count">158</span> of 158 cars · updated Jun 29, 2026 at 2:35 PM PDT</div>
   <div class="srcstatus"><span class="src-chip warn" tabindex="0" role="button" aria-expanded="false">Tesla · recovering<span class="src-pop" role="tooltip"><div class="hd"><b>Tesla</b> · recovering</div><div class="ln">Recovering — recent hiccups, still being polled.</div><div class="ln"><span class="k">Consecutive fails</span> 1</div><div class="ln"><span class="k">Last response</span> <time class="rel" datetime="2026-06-29T20:56:12+00:00">…</time></div><div class="ln"><span class="k">Last listings</span> <time class="rel" datetime="2026-06-29T20:56:12+00:00">…</time></div><div class="ln"><span class="k">Showing</span> 25 listings</div></span></span><span class="src-chip " tabindex="0" role="button" aria-expanded="false">Cargurus<span class="src-pop" role="tooltip"><div class="hd"><b>Cargurus</b> · OK</div><div class="ln">Fetching normally.</div><div class="ln"><span class="k">Last response</span> <time class="rel" datetime="2026-06-29T21:20:19+00:00">…</time></div><div class="ln"><span class="k">Last listings</span> <time class="rel" datetime="2026-06-29T21:20:19+00:00">…</time></div><div class="ln"><span class="k">Showing</span> 129 listings</div></span></span><span class="src-chip " tabindex="0" role="button" aria-expanded="false">Craigslist<span class="src-pop" role="tooltip"><div class="hd"><b>Craigslist</b> · OK</div><div class="ln">Fetching normally.</div><div class="ln"><span class="k">Last response</span> <time class="rel" datetime="2026-06-29T21:20:19+00:00">…</time></div><div class="ln"><span class="k">Last listings</span> <time class="rel" datetime="2026-06-29T21:20:19+00:00">…</time></div><div class="ln"><span class="k">Showing</span> 7 listings</div></span></span></div>
-<div class="filters"><div class="chips" id="srcChips"><button type="button" class="chip active" data-src="tesla">Tesla</button><button type="button" class="chip active" data-src="cargurus">CarGurus</button><button type="button" class="chip active" data-src="craigslist">Craigslist</button></div><div class="chips" id="trimChips"><button type="button" class="chip active" data-trim="RWD">RWD</button><button type="button" class="chip active" data-trim="Long Range">Long Range</button></div><div class="chips" id="colorChips"><button type="button" class="cchip active" data-color="RED"><span class="dot" style="background:#b81d24"></span>Red Multi-Coat</button><button type="button" class="cchip active" data-color="BLUE"><span class="dot" style="background:#1f3a93"></span>Deep Blue</button><button type="button" class="cchip active" data-color="SILVER"><span class="dot" style="background:#c7ccd1"></span>Silver</button><button type="button" class="cchip active" data-color="BLACK"><span class="dot" style="background:#16181d"></span>Solid Black</button><button type="button" class="cchip active" data-color="WHITE"><span class="dot" style="background:#e9eaec"></span>Pearl White</button><button type="button" class="cchip active" data-color="GREY"><span class="dot" style="background:#4b4f54"></span>Midnight Silver</button><button type="button" class="cchip active" data-color="UNKNOWN"><span class="dot" style="background:#888"></span>Unknown</button></div><label class="rng">Price<input type="number" id="priceMin" inputmode="numeric" min="0" step="500" placeholder="$24,900"><span class="dash">–</span><input type="number" id="priceMax" inputmode="numeric" min="0" step="500" placeholder="$35,000"></label><label class="rng">Year<select id="yearMin"><option value="2021" selected>2021</option><option value="2022">2022</option><option value="2023">2023</option></select><span class="dash">–</span><select id="yearMax"><option value="2021">2021</option><option value="2022">2022</option><option value="2023" selected>2023</option></select></label><label class="odo">Max mileage<input type="range" id="odoRange" min="0" max="80000" step="1000" value="80000"><span id="odoLabel">Any</span></label></div>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451392600" target="_blank" rel="noopener" data-sources="cargurus craigslist" data-odo="78068" data-price="24900" data-year="2021" data-color="RED" data-trim="Long Range">
+<div class="viewbar"><div class="viewset" id="viewset"><select id="viewsel" title="Saved views"><option value="__all">All cars</option></select><span class="dirty-dot" id="view-dirty" title="Unsaved changes" hidden></span><button type="button" class="vbtn" id="view-save" title="Save changes to this view" aria-label="Save changes to this view" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button><button type="button" class="vbtn" id="view-saveas" title="Save as a new view" aria-label="Save as a new view" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button><button type="button" class="vbtn" id="view-revert" title="Revert to saved" aria-label="Revert to saved" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 5 4 9 8 13"/><path d="M4 9h9a5 5 0 0 1 5 5v1"/></svg></button><button type="button" class="vbtn" id="view-rename" title="Rename this view" aria-label="Rename this view" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button type="button" class="vbtn danger" id="view-del" title="Delete this view" aria-label="Delete this view" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></div>
+<div class="filters"><label class="rng">Sort<select id="sortSel"><option value="price-asc" selected>Price ↑</option><option value="price-desc">Price ↓</option><option value="odo-asc">Mileage ↑</option><option value="year-desc">Newest</option><option value="year-asc">Oldest</option></select></label><div class="chips" id="srcChips"><button type="button" class="chip active" data-src="tesla">Tesla</button><button type="button" class="chip active" data-src="cargurus">CarGurus</button><button type="button" class="chip active" data-src="craigslist">Craigslist</button></div><div class="chips" id="trimChips"><button type="button" class="chip active" data-trim="RWD">RWD</button><button type="button" class="chip active" data-trim="Long Range">Long Range</button></div><div class="chips" id="colorChips"><button type="button" class="cchip active" data-color="RED"><span class="dot" style="background:#b81d24"></span>Red Multi-Coat</button><button type="button" class="cchip active" data-color="BLUE"><span class="dot" style="background:#1f3a93"></span>Deep Blue</button><button type="button" class="cchip active" data-color="SILVER"><span class="dot" style="background:#c7ccd1"></span>Silver</button><button type="button" class="cchip active" data-color="BLACK"><span class="dot" style="background:#16181d"></span>Solid Black</button><button type="button" class="cchip active" data-color="WHITE"><span class="dot" style="background:#e9eaec"></span>Pearl White</button><button type="button" class="cchip active" data-color="GREY"><span class="dot" style="background:#4b4f54"></span>Midnight Silver</button><button type="button" class="cchip active" data-color="UNKNOWN"><span class="dot" style="background:#888"></span>Unknown</button></div><label class="rng">Price<input type="number" id="priceMin" inputmode="numeric" min="0" step="500" placeholder="$24,900"><span class="dash">–</span><input type="number" id="priceMax" inputmode="numeric" min="0" step="500" placeholder="$35,000"></label><label class="rng">Year<select id="yearMin"><option value="2021" selected>2021</option><option value="2022">2022</option><option value="2023">2023</option></select><span class="dash">–</span><select id="yearMax"><option value="2021">2021</option><option value="2022">2022</option><option value="2023" selected>2023</option></select></label><label class="odo">Max mileage<input type="range" id="odoRange" min="0" max="80000" step="1000" value="80000"><span id="odoLabel">Any</span></label><label class="staronly"><input type="checkbox" id="starOnly">★ starred</label></div>
+    <a class="card" href="https://www.cargurus.com/Cars/link/451392600" target="_blank" rel="noopener" data-unit="5YJYGAEEXMF223016" data-sources="cargurus craigslist" data-odo="78068" data-price="24900" data-year="2021" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGAEEXMF223016" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$24,900</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus / Craigslist</span></div>
       <div class="meta">78,068 mi · El Cerrito, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGAEEXMF223016 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/445527263" target="_blank" rel="noopener" data-sources="cargurus" data-odo="51264" data-price="24900" data-year="2021" data-color="RED" data-trim="RWD">
+    <a class="card" href="https://www.cargurus.com/Cars/link/445527263" target="_blank" rel="noopener" data-unit="5YJYGDED6MF107238" data-sources="cargurus" data-odo="51264" data-price="24900" data-year="2021" data-color="RED" data-trim="RWD">
+      <button class="star" data-unit="5YJYGDED6MF107238" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$24,900</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Standard Range RWD <span class="tag">CarGurus</span></div>
       <div class="meta">51,264 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDED6MF107238 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451697580" target="_blank" rel="noopener" data-sources="cargurus" data-odo="79193" data-price="25000" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451697580" target="_blank" rel="noopener" data-unit="5YJYGDEE6MF125036" data-sources="cargurus" data-odo="79193" data-price="25000" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE6MF125036" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$25,000</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">79,193 mi · Seaside, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE6MF125036 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451085105" target="_blank" rel="noopener" data-sources="cargurus" data-odo="78060" data-price="25979" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451085105" target="_blank" rel="noopener" data-unit="5YJYGAEE4MF148748" data-sources="cargurus" data-odo="78060" data-price="25979" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGAEE4MF148748" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$25,979</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">78,060 mi · Santa Rosa, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGAEE4MF148748 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/446842362" target="_blank" rel="noopener" data-sources="cargurus" data-odo="68970" data-price="26370" data-year="2021" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/446842362" target="_blank" rel="noopener" data-unit="5YJYGAEE4MF217888" data-sources="cargurus" data-odo="68970" data-price="26370" data-year="2021" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGAEE4MF217888" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,370</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">68,970 mi · Mountain View, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGAEE4MF217888 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450088047" target="_blank" rel="noopener" data-sources="cargurus" data-odo="75272" data-price="26399" data-year="2021" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450088047" target="_blank" rel="noopener" data-unit="5YJYGDEE8MF224473" data-sources="cargurus" data-odo="75272" data-price="26399" data-year="2021" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE8MF224473" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,399</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2021 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">75,272 mi · Watsonville, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE8MF224473 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450456724" target="_blank" rel="noopener" data-sources="cargurus" data-odo="68976" data-price="26500" data-year="2021" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450456724" target="_blank" rel="noopener" data-unit="5YJYGDEE0MF250971" data-sources="cargurus" data-odo="68976" data-price="26500" data-year="2021" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE0MF250971" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,500</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">68,976 mi · Colma, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE0MF250971 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451777741" target="_blank" rel="noopener" data-sources="cargurus" data-odo="68397" data-price="26584" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451777741" target="_blank" rel="noopener" data-unit="5YJYGDEE4MF203104" data-sources="cargurus" data-odo="68397" data-price="26584" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE4MF203104" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,584</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">68,397 mi · Colma, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE4MF203104 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447514671" target="_blank" rel="noopener" data-sources="cargurus" data-odo="69644" data-price="26900" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447514671" target="_blank" rel="noopener" data-unit="5YJYGDEEXMF203351" data-sources="cargurus" data-odo="69644" data-price="26900" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEEXMF203351" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,900</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">69,644 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEEXMF203351 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451087961" target="_blank" rel="noopener" data-sources="cargurus" data-odo="67976" data-price="26900" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451087961" target="_blank" rel="noopener" data-unit="5YJYGDEEXMF086659" data-sources="cargurus" data-odo="67976" data-price="26900" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEEXMF086659" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,900</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">67,976 mi · Gilroy, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEEXMF086659 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447514670" target="_blank" rel="noopener" data-sources="cargurus" data-odo="66262" data-price="26900" data-year="2021" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447514670" target="_blank" rel="noopener" data-unit="5YJYGDEE9MF098057" data-sources="cargurus" data-odo="66262" data-price="26900" data-year="2021" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE9MF098057" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,900</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">66,262 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE9MF098057 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/443509457" target="_blank" rel="noopener" data-sources="cargurus" data-odo="67264" data-price="26957" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/443509457" target="_blank" rel="noopener" data-unit="5YJYGDEE7MF250434" data-sources="cargurus" data-odo="67264" data-price="26957" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE7MF250434" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,957</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">67,264 mi · Sonoma, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE7MF250434 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450916186" target="_blank" rel="noopener" data-sources="cargurus" data-odo="76014" data-price="26975" data-year="2021" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450916186" target="_blank" rel="noopener" data-unit="5YJYGDEEXMF069201" data-sources="cargurus" data-odo="76014" data-price="26975" data-year="2021" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEEXMF069201" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,975</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2021 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">76,014 mi · San Mateo, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEEXMF069201 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449627411" target="_blank" rel="noopener" data-sources="cargurus" data-odo="60773" data-price="26975" data-year="2021" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449627411" target="_blank" rel="noopener" data-unit="5YJYGDEE8MF196285" data-sources="cargurus" data-odo="60773" data-price="26975" data-year="2021" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE8MF196285" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,975</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2021 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">60,773 mi · Davis, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE8MF196285 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451248738" target="_blank" rel="noopener" data-sources="cargurus craigslist" data-odo="67752" data-price="26985" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451248738" target="_blank" rel="noopener" data-unit="5YJYGDEE2MF275273" data-sources="cargurus craigslist" data-odo="67752" data-price="26985" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE2MF275273" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,985</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus / Craigslist</span></div>
       <div class="meta">67,752 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE2MF275273 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/445517872" target="_blank" rel="noopener" data-sources="cargurus" data-odo="47518" data-price="26995" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/445517872" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF095056" data-sources="cargurus" data-odo="47518" data-price="26995" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF095056" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$26,995</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">47,518 mi · Sacramento, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE3MF095056 </div>
     </a>
-    <a class="card" href="https://www.craigslist.org/view/d/daly-city-2021-tesla-model-long-range/VE1fGEpj8RGkr-GM_XarBQ" target="_blank" rel="noopener" data-sources="craigslist" data-odo="77631" data-price="27083" data-year="2021" data-color="" data-trim="Long Range">
+    <a class="card" href="https://www.craigslist.org/view/d/daly-city-2021-tesla-model-long-range/VE1fGEpj8RGkr-GM_XarBQ" target="_blank" rel="noopener" data-unit="5YJYGDEE0MF109818" data-sources="craigslist" data-odo="77631" data-price="27083" data-year="2021" data-color="" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE0MF109818" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,083</div>
       <div class="title"><span class="dot" style="background:#888"></span>2021 Model Y TESLA MODEL Y <span class="tag">Craigslist</span></div>
       <div class="meta">77,631 mi · + Century Auto *CREDIT UNION FINANCING AVAILABLE!*, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE0MF109818 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451496655" target="_blank" rel="noopener" data-sources="cargurus" data-odo="73167" data-price="27087" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451496655" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF187204" data-sources="cargurus" data-odo="73167" data-price="27087" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF187204" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,087</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">73,167 mi · Vacaville, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE3MF187204 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452045728" target="_blank" rel="noopener" data-sources="cargurus" data-odo="70608" data-price="27576" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452045728" target="_blank" rel="noopener" data-unit="5YJYGDEE6MF231230" data-sources="cargurus" data-odo="70608" data-price="27576" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE6MF231230" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,576</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">70,608 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE6MF231230 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/431193047" target="_blank" rel="noopener" data-sources="cargurus" data-odo="59212" data-price="27688" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/431193047" target="_blank" rel="noopener" data-unit="5YJYGDEEXMF158024" data-sources="cargurus" data-odo="59212" data-price="27688" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEEXMF158024" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,688</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">59,212 mi · Pleasanton, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEEXMF158024 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/445923773" target="_blank" rel="noopener" data-sources="cargurus" data-odo="55221" data-price="27890" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/445923773" target="_blank" rel="noopener" data-unit="5YJYGDEE9MF306261" data-sources="cargurus" data-odo="55221" data-price="27890" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE9MF306261" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,890</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">55,221 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE9MF306261 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447514675" target="_blank" rel="noopener" data-sources="cargurus" data-odo="57812" data-price="27900" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447514675" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF090276" data-sources="cargurus" data-odo="57812" data-price="27900" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF090276" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,900</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">57,812 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE3MF090276 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450539018" target="_blank" rel="noopener" data-sources="cargurus" data-odo="63406" data-price="27995" data-year="2021" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450539018" target="_blank" rel="noopener" data-unit="5YJYGDEE0MF140485" data-sources="cargurus" data-odo="63406" data-price="27995" data-year="2021" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE0MF140485" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,995</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2021 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">63,406 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE0MF140485 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/444848155" target="_blank" rel="noopener" data-sources="cargurus" data-odo="50600" data-price="27995" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/444848155" target="_blank" rel="noopener" data-unit="5YJYGDEE0MF294971" data-sources="cargurus" data-odo="50600" data-price="27995" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE0MF294971" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,995</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">50,600 mi · San Pablo, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE0MF294971 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/439972213" target="_blank" rel="noopener" data-sources="cargurus" data-odo="50913" data-price="27998" data-year="2021" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/439972213" target="_blank" rel="noopener" data-unit="5YJYGDEE1MF262014" data-sources="cargurus" data-odo="50913" data-price="27998" data-year="2021" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE1MF262014" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$27,998</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2021 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">50,913 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE1MF262014 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451063730" target="_blank" rel="noopener" data-sources="cargurus" data-odo="48768" data-price="28299" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451063730" target="_blank" rel="noopener" data-unit="5YJYGDEE7MF172754" data-sources="cargurus" data-odo="48768" data-price="28299" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE7MF172754" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,299</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">48,768 mi · Santa Clara, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE7MF172754 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452147126" target="_blank" rel="noopener" data-sources="cargurus" data-odo="70953" data-price="28300" data-year="2022" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452147126" target="_blank" rel="noopener" data-unit="7SAYGDEE3NF408921" data-sources="cargurus" data-odo="70953" data-price="28300" data-year="2022" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE3NF408921" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,300</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2022 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">70,953 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE3NF408921 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447745275" target="_blank" rel="noopener" data-sources="cargurus" data-odo="54672" data-price="28314" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447745275" target="_blank" rel="noopener" data-unit="5YJYGDEE8MF216373" data-sources="cargurus" data-odo="54672" data-price="28314" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE8MF216373" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,314</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">54,672 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE8MF216373 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449753604" target="_blank" rel="noopener" data-sources="cargurus" data-odo="68546" data-price="28714" data-year="2022" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449753604" target="_blank" rel="noopener" data-unit="7SAYGDEE0NF378843" data-sources="cargurus" data-odo="68546" data-price="28714" data-year="2022" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0NF378843" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,714</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2022 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">68,546 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE0NF378843 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451634540" target="_blank" rel="noopener" data-sources="cargurus" data-odo="70525" data-price="28734" data-year="2022" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451634540" target="_blank" rel="noopener" data-unit="7SAYGAEE5NF351829" data-sources="cargurus" data-odo="70525" data-price="28734" data-year="2022" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEE5NF351829" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,734</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2022 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">70,525 mi · Pleasanton, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEE5NF351829 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/446759736" target="_blank" rel="noopener" data-sources="cargurus" data-odo="48980" data-price="28888" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/446759736" target="_blank" rel="noopener" data-unit="5YJYGDEE5MF301946" data-sources="cargurus" data-odo="48980" data-price="28888" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE5MF301946" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,888</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">48,980 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE5MF301946 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447514676" target="_blank" rel="noopener" data-sources="cargurus" data-odo="60954" data-price="28900" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447514676" target="_blank" rel="noopener" data-unit="7SAYGDEE8PF749072" data-sources="cargurus" data-odo="60954" data-price="28900" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PF749072" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,900</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">60,954 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PF749072 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447514673" target="_blank" rel="noopener" data-sources="cargurus" data-odo="49556" data-price="28900" data-year="2022" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447514673" target="_blank" rel="noopener" data-unit="7SAYGDEE7NF349422" data-sources="cargurus" data-odo="49556" data-price="28900" data-year="2022" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7NF349422" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,900</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2022 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">49,556 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE7NF349422 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/446723324" target="_blank" rel="noopener" data-sources="cargurus" data-odo="77058" data-price="28913" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/446723324" target="_blank" rel="noopener" data-unit="7SAYGDEE9PF631869" data-sources="cargurus" data-odo="77058" data-price="28913" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE9PF631869" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,913</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">77,058 mi · San Leandro, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE9PF631869 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449918470" target="_blank" rel="noopener" data-sources="cargurus" data-odo="47196" data-price="28994" data-year="2022" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449918470" target="_blank" rel="noopener" data-unit="7SAYGDEE6NF556593" data-sources="cargurus" data-odo="47196" data-price="28994" data-year="2022" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6NF556593" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,994</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2022 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">47,196 mi · Gilroy, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE6NF556593 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450252693" target="_blank" rel="noopener" data-sources="cargurus" data-odo="51350" data-price="28995" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450252693" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF229564" data-sources="cargurus" data-odo="51350" data-price="28995" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF229564" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,995</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">51,350 mi · Oakland, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE3MF229564 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448466578" target="_blank" rel="noopener" data-sources="cargurus" data-odo="56906" data-price="28998" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448466578" target="_blank" rel="noopener" data-unit="5YJYGDEE5MF218761" data-sources="cargurus" data-odo="56906" data-price="28998" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE5MF218761" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$28,998</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">56,906 mi · Sacramento, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE5MF218761 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452002114" target="_blank" rel="noopener" data-sources="cargurus" data-odo="61995" data-price="29084" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452002114" target="_blank" rel="noopener" data-unit="7SAYGDEE9NF547628" data-sources="cargurus" data-odo="61995" data-price="29084" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE9NF547628" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,084</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">61,995 mi · Concord, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE9NF547628 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE8PF635315?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="66582" data-price="29100" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE8PF635315?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE8PF635315" data-sources="tesla" data-odo="66582" data-price="29100" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PF635315" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,100</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">66,582 mi · Fremont, CA · ~274 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE8PF635315 <span class="acc">⚠️ prior accident</span></div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450303339" target="_blank" rel="noopener" data-sources="cargurus" data-odo="74366" data-price="29382" data-year="2023" data-color="UNKNOWN" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450303339" target="_blank" rel="noopener" data-unit="7SAYGDEE1PF691970" data-sources="cargurus" data-odo="74366" data-price="29382" data-year="2023" data-color="UNKNOWN" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE1PF691970" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,382</div>
       <div class="title"><span class="dot" style="background:#888"></span>2023 Unknown Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">74,366 mi · Sacramento, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE1PF691970 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/442814849" target="_blank" rel="noopener" data-sources="cargurus" data-odo="58074" data-price="29400" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/442814849" target="_blank" rel="noopener" data-unit="7SAYGDEE5PF629665" data-sources="cargurus" data-odo="58074" data-price="29400" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE5PF629665" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,400</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">58,074 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE5PF629665 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449413336" target="_blank" rel="noopener" data-sources="cargurus" data-odo="55865" data-price="29414" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449413336" target="_blank" rel="noopener" data-unit="7SAYGDEE6NF439385" data-sources="cargurus" data-odo="55865" data-price="29414" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6NF439385" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,414</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">55,865 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE6NF439385 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447566406" target="_blank" rel="noopener" data-sources="cargurus" data-odo="77793" data-price="29500" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447566406" target="_blank" rel="noopener" data-unit="7SAYGAEE2PF886572" data-sources="cargurus" data-odo="77793" data-price="29500" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEE2PF886572" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,500</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">77,793 mi · Concord, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEE2PF886572 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/443142732" target="_blank" rel="noopener" data-sources="cargurus craigslist" data-odo="56549" data-price="29599" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/443142732" target="_blank" rel="noopener" data-unit="7SAYGDEE4NF434315" data-sources="cargurus craigslist" data-odo="56549" data-price="29599" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE4NF434315" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,599</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus / Craigslist</span></div>
       <div class="meta">56,549 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE4NF434315 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE2MF280473?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="53489" data-price="29600" data-year="2021" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE2MF280473?titleStatus=used" target="_blank" rel="noopener" data-unit="5YJYGDEE2MF280473" data-sources="tesla" data-odo="53489" data-price="29600" data-year="2021" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE2MF280473" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,600</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2021 Solid Black Model Y Long Range All-Wheel Drive</div>
       <div class="meta">53,489 mi · Fremont, CA · ~278 mi range</div>
       <div class="meta vin">VIN 5YJYGDEE2MF280473 <span class="acc">⚠️ prior accident</span></div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450797875" target="_blank" rel="noopener" data-sources="cargurus" data-odo="60020" data-price="29800" data-year="2022" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450797875" target="_blank" rel="noopener" data-unit="7SAYGDEE5NF559226" data-sources="cargurus" data-odo="60020" data-price="29800" data-year="2022" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE5NF559226" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,800</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2022 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">60,020 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE5NF559226 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448915127" target="_blank" rel="noopener" data-sources="cargurus" data-odo="34953" data-price="29888" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448915127" target="_blank" rel="noopener" data-unit="5YJYGDEEXMF095815" data-sources="cargurus" data-odo="34953" data-price="29888" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEEXMF095815" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,888</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">34,953 mi · Pleasanton, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEEXMF095815 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447156322" target="_blank" rel="noopener" data-sources="cargurus" data-odo="74991" data-price="29900" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447156322" target="_blank" rel="noopener" data-unit="7SAYGDEE6PA033381" data-sources="cargurus" data-odo="74991" data-price="29900" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6PA033381" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,900</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">74,991 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE6PA033381 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448149174" target="_blank" rel="noopener" data-sources="cargurus" data-odo="40826" data-price="29914" data-year="2021" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448149174" target="_blank" rel="noopener" data-unit="5YJYGDEE1MF144674" data-sources="cargurus" data-odo="40826" data-price="29914" data-year="2021" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE1MF144674" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,914</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2021 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">40,826 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE1MF144674 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447939976" target="_blank" rel="noopener" data-sources="cargurus" data-odo="61561" data-price="29914" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447939976" target="_blank" rel="noopener" data-unit="7SAYGDEE1PA119309" data-sources="cargurus" data-odo="61561" data-price="29914" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE1PA119309" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,914</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">61,561 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE1PA119309 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449154767" target="_blank" rel="noopener" data-sources="cargurus" data-odo="56608" data-price="29988" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449154767" target="_blank" rel="noopener" data-unit="7SAYGDEE3PF703469" data-sources="cargurus" data-odo="56608" data-price="29988" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE3PF703469" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,988</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">56,608 mi · Livermore, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE3PF703469 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447631836" target="_blank" rel="noopener" data-sources="cargurus" data-odo="39525" data-price="29995" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447631836" target="_blank" rel="noopener" data-unit="5YJYGDEE8MF270238" data-sources="cargurus" data-odo="39525" data-price="29995" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE8MF270238" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,995</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">39,525 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE8MF270238 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447867560" target="_blank" rel="noopener" data-sources="cargurus" data-odo="47067" data-price="29995" data-year="2023" data-color="UNKNOWN" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447867560" target="_blank" rel="noopener" data-unit="7SAYGDEE7PF624211" data-sources="cargurus" data-odo="47067" data-price="29995" data-year="2023" data-color="UNKNOWN" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7PF624211" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,995</div>
       <div class="title"><span class="dot" style="background:#888"></span>2023 Unknown Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">47,067 mi · Alamo, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE7PF624211 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/444875420" target="_blank" rel="noopener" data-sources="cargurus" data-odo="42299" data-price="29995" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/444875420" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF224297" data-sources="cargurus" data-odo="42299" data-price="29995" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF224297" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,995</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">42,299 mi · Newman, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE3MF224297 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450886166" target="_blank" rel="noopener" data-sources="cargurus" data-odo="61556" data-price="29998" data-year="2022" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450886166" target="_blank" rel="noopener" data-unit="7SAYGDEE0NF353540" data-sources="cargurus" data-odo="61556" data-price="29998" data-year="2022" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0NF353540" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,998</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2022 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">61,556 mi · Sacramento, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE0NF353540 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451248314" target="_blank" rel="noopener" data-sources="cargurus" data-odo="48942" data-price="29998" data-year="2021" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451248314" target="_blank" rel="noopener" data-unit="5YJYGDEEXMF065259" data-sources="cargurus" data-odo="48942" data-price="29998" data-year="2021" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEEXMF065259" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,998</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2021 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">48,942 mi · Sacramento, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEEXMF065259 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451097588" target="_blank" rel="noopener" data-sources="cargurus" data-odo="68383" data-price="29998" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451097588" target="_blank" rel="noopener" data-unit="5YJYGDEE9MF143739" data-sources="cargurus" data-odo="68383" data-price="29998" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE9MF143739" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$29,998</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">68,383 mi · Dublin, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE9MF143739 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452147620" target="_blank" rel="noopener" data-sources="cargurus" data-odo="60974" data-price="30030" data-year="2022" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452147620" target="_blank" rel="noopener" data-unit="7SAYGDEE7NF486764" data-sources="cargurus" data-odo="60974" data-price="30030" data-year="2022" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7NF486764" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,030</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2022 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">60,974 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE7NF486764 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448645028" target="_blank" rel="noopener" data-sources="cargurus" data-odo="57253" data-price="30080" data-year="2021" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448645028" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF213025" data-sources="cargurus" data-odo="57253" data-price="30080" data-year="2021" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF213025" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,080</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2021 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">57,253 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE3MF213025 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447760111" target="_blank" rel="noopener" data-sources="cargurus" data-odo="35780" data-price="30314" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447760111" target="_blank" rel="noopener" data-unit="5YJYGDEE0MF273084" data-sources="cargurus" data-odo="35780" data-price="30314" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE0MF273084" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,314</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">35,780 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE0MF273084 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450740506" target="_blank" rel="noopener" data-sources="cargurus" data-odo="58153" data-price="30361" data-year="2022" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450740506" target="_blank" rel="noopener" data-unit="7SAYGAEE6NF400908" data-sources="cargurus" data-odo="58153" data-price="30361" data-year="2022" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEE6NF400908" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,361</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2022 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">58,153 mi · Sunnyvale, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEE6NF400908 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/5YJYGAEE1MF206637?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="58007" data-price="30500" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/5YJYGAEE1MF206637?titleStatus=used" target="_blank" rel="noopener" data-unit="5YJYGAEE1MF206637" data-sources="tesla" data-odo="58007" data-price="30500" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGAEE1MF206637" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,500</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">58,007 mi · Colma, CA · ~275 mi range</div>
       <div class="meta vin">VIN 5YJYGAEE1MF206637 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451141714" target="_blank" rel="noopener" data-sources="cargurus" data-odo="32330" data-price="30529" data-year="2021" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451141714" target="_blank" rel="noopener" data-unit="5YJYGDEE1MF157120" data-sources="cargurus" data-odo="32330" data-price="30529" data-year="2021" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE1MF157120" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,529</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2021 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">32,330 mi · Corte Madera, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE1MF157120 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/445980929" target="_blank" rel="noopener" data-sources="cargurus" data-odo="60021" data-price="30587" data-year="2023" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/445980929" target="_blank" rel="noopener" data-unit="7SAYGDEE5PF741026" data-sources="cargurus" data-odo="60021" data-price="30587" data-year="2023" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE5PF741026" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,587</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2023 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">60,021 mi · Vacaville, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE5PF741026 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451090952" target="_blank" rel="noopener" data-sources="cargurus" data-odo="34640" data-price="30598" data-year="2021" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451090952" target="_blank" rel="noopener" data-unit="5YJYGDEE1MF075971" data-sources="cargurus" data-odo="34640" data-price="30598" data-year="2021" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE1MF075971" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,598</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">34,640 mi · Sunnyvale, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE1MF075971 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE6MF230160?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="44950" data-price="30600" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE6MF230160?titleStatus=used" target="_blank" rel="noopener" data-unit="5YJYGDEE6MF230160" data-sources="tesla" data-odo="44950" data-price="30600" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE6MF230160" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,600</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">44,950 mi · Colma, CA · ~290 mi range</div>
       <div class="meta vin">VIN 5YJYGDEE6MF230160 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE9PF775437?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="68257" data-price="30700" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE9PF775437?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE9PF775437" data-sources="tesla" data-odo="68257" data-price="30700" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE9PF775437" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,700</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range All-Wheel Drive</div>
       <div class="meta">68,257 mi · Colma, CA · ~278 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE9PF775437 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451009837" target="_blank" rel="noopener" data-sources="cargurus" data-odo="49720" data-price="30810" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451009837" target="_blank" rel="noopener" data-unit="7SAYGDEE7PA123154" data-sources="cargurus" data-odo="49720" data-price="30810" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7PA123154" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,810</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">49,720 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE7PA123154 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447560328" target="_blank" rel="noopener" data-sources="cargurus" data-odo="60944" data-price="30885" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447560328" target="_blank" rel="noopener" data-unit="7SAYGAEEXNF492508" data-sources="cargurus" data-odo="60944" data-price="30885" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEEXNF492508" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,885</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">60,944 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEEXNF492508 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450773835" target="_blank" rel="noopener" data-sources="cargurus" data-odo="28529" data-price="30888" data-year="2022" data-color="UNKNOWN" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450773835" target="_blank" rel="noopener" data-unit="7SAYGDEE3NF317986" data-sources="cargurus" data-odo="28529" data-price="30888" data-year="2022" data-color="UNKNOWN" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE3NF317986" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,888</div>
       <div class="title"><span class="dot" style="background:#888"></span>2022 Unknown Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">28,529 mi · Burlingame, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE3NF317986 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452172541" target="_blank" rel="noopener" data-sources="cargurus" data-odo="55047" data-price="30961" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452172541" target="_blank" rel="noopener" data-unit="5YJYGDEE2MF213923" data-sources="cargurus" data-odo="55047" data-price="30961" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE2MF213923" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,961</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">55,047 mi · Oakland, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE2MF213923 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450751294" target="_blank" rel="noopener" data-sources="cargurus" data-odo="45370" data-price="30998" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450751294" target="_blank" rel="noopener" data-unit="7SAYGDEE4NF535581" data-sources="cargurus" data-odo="45370" data-price="30998" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE4NF535581" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,998</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">45,370 mi · Pleasant Hill, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE4NF535581 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451717320" target="_blank" rel="noopener" data-sources="cargurus" data-odo="57718" data-price="30998" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451717320" target="_blank" rel="noopener" data-unit="7SAYGDEE8NF531663" data-sources="cargurus" data-odo="57718" data-price="30998" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8NF531663" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,998</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">57,718 mi · Pleasanton, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8NF531663 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450255777" target="_blank" rel="noopener" data-sources="cargurus" data-odo="56941" data-price="30998" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450255777" target="_blank" rel="noopener" data-unit="7SAYGDEEXPA151711" data-sources="cargurus" data-odo="56941" data-price="30998" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEEXPA151711" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,998</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">56,941 mi · Sacramento, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEEXPA151711 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451475072" target="_blank" rel="noopener" data-sources="cargurus" data-odo="53304" data-price="30998" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451475072" target="_blank" rel="noopener" data-unit="7SAYGDEE3NF355492" data-sources="cargurus" data-odo="53304" data-price="30998" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE3NF355492" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,998</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">53,304 mi · Fremont, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE3NF355492 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451955081" target="_blank" rel="noopener" data-sources="cargurus" data-odo="23344" data-price="30998" data-year="2021" data-color="WHITE" data-trim="RWD">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451955081" target="_blank" rel="noopener" data-unit="5YJYGDED5MF163087" data-sources="cargurus" data-odo="23344" data-price="30998" data-year="2021" data-color="WHITE" data-trim="RWD">
+      <button class="star" data-unit="5YJYGDED5MF163087" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,998</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Standard Range RWD <span class="tag">CarGurus</span></div>
       <div class="meta">23,344 mi · Fremont, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDED5MF163087 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452059131" target="_blank" rel="noopener" data-sources="cargurus" data-odo="70989" data-price="30998" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452059131" target="_blank" rel="noopener" data-unit="7SAYGAEEXPF688645" data-sources="cargurus" data-odo="70989" data-price="30998" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEEXPF688645" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$30,998</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">70,989 mi · Fairfield, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEEXPF688645 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/446073339" target="_blank" rel="noopener" data-sources="cargurus" data-odo="47462" data-price="31383" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/446073339" target="_blank" rel="noopener" data-unit="7SAYGDEE9PA052832" data-sources="cargurus" data-odo="47462" data-price="31383" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE9PA052832" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,383</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">47,462 mi · Newark, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE9PA052832 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/446634890" target="_blank" rel="noopener" data-sources="cargurus" data-odo="43388" data-price="31499" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/446634890" target="_blank" rel="noopener" data-unit="7SAYGDEE7PF631630" data-sources="cargurus" data-odo="43388" data-price="31499" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7PF631630" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,499</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">43,388 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE7PF631630 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447018640" target="_blank" rel="noopener" data-sources="cargurus" data-odo="56280" data-price="31500" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447018640" target="_blank" rel="noopener" data-unit="7SAYGDEE9PA036954" data-sources="cargurus" data-odo="56280" data-price="31500" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE9PA036954" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,500</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">56,280 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE9PA036954 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448371420" target="_blank" rel="noopener" data-sources="cargurus" data-odo="50159" data-price="31514" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448371420" target="_blank" rel="noopener" data-unit="7SAYGDEE8PF776563" data-sources="cargurus" data-odo="50159" data-price="31514" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PF776563" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,514</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">50,159 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PF776563 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/443386178" target="_blank" rel="noopener" data-sources="cargurus" data-odo="32293" data-price="31549" data-year="2023" data-color="GREY" data-trim="RWD">
+    <a class="card" href="https://www.cargurus.com/Cars/link/443386178" target="_blank" rel="noopener" data-unit="7SAYGDED9PF948140" data-sources="cargurus" data-odo="32293" data-price="31549" data-year="2023" data-color="GREY" data-trim="RWD">
+      <button class="star" data-unit="7SAYGDED9PF948140" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,549</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y RWD <span class="tag">CarGurus</span></div>
       <div class="meta">32,293 mi · Newark, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDED9PF948140 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE2NF366712?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="35785" data-price="31600" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE2NF366712?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE2NF366712" data-sources="tesla" data-odo="35785" data-price="31600" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE2NF366712" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,600</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">35,785 mi · Fremont, CA · ~295 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE2NF366712 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449517481" target="_blank" rel="noopener" data-sources="cargurus" data-odo="48860" data-price="31650" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449517481" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF274133" data-sources="cargurus" data-odo="48860" data-price="31650" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF274133" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,650</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">48,860 mi · Davis, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE3MF274133 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449522403" target="_blank" rel="noopener" data-sources="cargurus" data-odo="38158" data-price="31714" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449522403" target="_blank" rel="noopener" data-unit="7SAYGDEE0NF491949" data-sources="cargurus" data-odo="38158" data-price="31714" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0NF491949" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,714</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">38,158 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE0NF491949 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449186157" target="_blank" rel="noopener" data-sources="cargurus" data-odo="30740" data-price="31822" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449186157" target="_blank" rel="noopener" data-unit="7SAYGDEE7NF413281" data-sources="cargurus" data-odo="30740" data-price="31822" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7NF413281" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,822</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">30,740 mi · Fremont, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE7NF413281 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451287529" target="_blank" rel="noopener" data-sources="cargurus" data-odo="38857" data-price="31851" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451287529" target="_blank" rel="noopener" data-unit="5YJYGDEEXMF239654" data-sources="cargurus" data-odo="38857" data-price="31851" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEEXMF239654" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,851</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">38,857 mi · San Leandro, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEEXMF239654 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451063722" target="_blank" rel="noopener" data-sources="cargurus" data-odo="57475" data-price="31888" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451063722" target="_blank" rel="noopener" data-unit="7SAYGDEEXPF624901" data-sources="cargurus" data-odo="57475" data-price="31888" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEEXPF624901" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,888</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">57,475 mi · Santa Clara, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEEXPF624901 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE2NF513868?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="58732" data-price="31900" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE2NF513868?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE2NF513868" data-sources="tesla" data-odo="58732" data-price="31900" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE2NF513868" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,900</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">58,732 mi · Fremont, CA · ~274 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE2NF513868 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450960889" target="_blank" rel="noopener" data-sources="cargurus" data-odo="49735" data-price="31914" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450960889" target="_blank" rel="noopener" data-unit="7SAYGAEEXPF742381" data-sources="cargurus" data-odo="49735" data-price="31914" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEEXPF742381" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,914</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">49,735 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEEXPF742381 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450555486" target="_blank" rel="noopener" data-sources="cargurus" data-odo="37729" data-price="31998" data-year="2023" data-color="GREY" data-trim="RWD">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450555486" target="_blank" rel="noopener" data-unit="7SAYGDED4PF960227" data-sources="cargurus" data-odo="37729" data-price="31998" data-year="2023" data-color="GREY" data-trim="RWD">
+      <button class="star" data-unit="7SAYGDED4PF960227" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,998</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y RWD <span class="tag">CarGurus</span></div>
       <div class="meta">37,729 mi · Colma, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDED4PF960227 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447909921" target="_blank" rel="noopener" data-sources="cargurus" data-odo="40666" data-price="31998" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447909921" target="_blank" rel="noopener" data-unit="7SAYGDEEXNF362424" data-sources="cargurus" data-odo="40666" data-price="31998" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEEXNF362424" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,998</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">40,666 mi · Fairfield, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEEXNF362424 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451645031" target="_blank" rel="noopener" data-sources="cargurus" data-odo="59984" data-price="31998" data-year="2022" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451645031" target="_blank" rel="noopener" data-unit="7SAYGAEE5NF403332" data-sources="cargurus" data-odo="59984" data-price="31998" data-year="2022" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEE5NF403332" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,998</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2022 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">59,984 mi · Pleasanton, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEE5NF403332 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452169221" target="_blank" rel="noopener" data-sources="cargurus" data-odo="44255" data-price="31998" data-year="2021" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452169221" target="_blank" rel="noopener" data-unit="5YJYGAEE2MF148084" data-sources="cargurus" data-odo="44255" data-price="31998" data-year="2021" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGAEE2MF148084" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,998</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">44,255 mi · Pleasanton, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGAEE2MF148084 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448979740" target="_blank" rel="noopener" data-sources="cargurus" data-odo="45004" data-price="31999" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448979740" target="_blank" rel="noopener" data-unit="7SAYGDEE8PA173965" data-sources="cargurus" data-odo="45004" data-price="31999" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PA173965" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,999</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">45,004 mi · Fremont, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PA173965 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451063713" target="_blank" rel="noopener" data-sources="cargurus" data-odo="51360" data-price="31999" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451063713" target="_blank" rel="noopener" data-unit="7SAYGDEEXPA087539" data-sources="cargurus" data-odo="51360" data-price="31999" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEEXPA087539" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$31,999</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">51,360 mi · Santa Clara, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEEXPA087539 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448902659" target="_blank" rel="noopener" data-sources="cargurus" data-odo="50390" data-price="32200" data-year="2023" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448902659" target="_blank" rel="noopener" data-unit="7SAYGDEE9PA086544" data-sources="cargurus" data-odo="50390" data-price="32200" data-year="2023" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE9PA086544" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,200</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2023 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">50,390 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE9PA086544 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450534227" target="_blank" rel="noopener" data-sources="cargurus" data-odo="46107" data-price="32332" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450534227" target="_blank" rel="noopener" data-unit="7SAYGDEE9PF749761" data-sources="cargurus" data-odo="46107" data-price="32332" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE9PF749761" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,332</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">46,107 mi · Santa Rosa, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE9PF749761 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE7PF837322?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="34769" data-price="32400" data-year="2023" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE7PF837322?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE7PF837322" data-sources="tesla" data-odo="34769" data-price="32400" data-year="2023" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7PF837322" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,400</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2023 Red Multi-Coat Model Y Long Range All-Wheel Drive</div>
       <div class="meta">34,769 mi · Fremont, CA · ~270 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE7PF837322 <span class="acc">⚠️ prior accident</span></div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE3MF306806?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="39800" data-price="32400" data-year="2021" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE3MF306806?titleStatus=used" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF306806" data-sources="tesla" data-odo="39800" data-price="32400" data-year="2021" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF306806" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,400</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Long Range All-Wheel Drive</div>
       <div class="meta">39,800 mi · Fremont, CA · ~280 mi range</div>
       <div class="meta vin">VIN 5YJYGDEE3MF306806 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/445335864" target="_blank" rel="noopener" data-sources="cargurus" data-odo="42065" data-price="32487" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/445335864" target="_blank" rel="noopener" data-unit="7SAYGDEE2PF742456" data-sources="cargurus" data-odo="42065" data-price="32487" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE2PF742456" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,487</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">42,065 mi · Sunnyvale, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE2PF742456 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/446189721" target="_blank" rel="noopener" data-sources="cargurus" data-odo="27210" data-price="32488" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/446189721" target="_blank" rel="noopener" data-unit="7SAYGDEE0NF557268" data-sources="cargurus" data-odo="27210" data-price="32488" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0NF557268" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,488</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">27,210 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE0NF557268 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/446615603" target="_blank" rel="noopener" data-sources="cargurus" data-odo="30227" data-price="32495" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/446615603" target="_blank" rel="noopener" data-unit="7SAYGDEE9NA021688" data-sources="cargurus" data-odo="30227" data-price="32495" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE9NA021688" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,495</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">30,227 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE9NA021688 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/446371628" target="_blank" rel="noopener" data-sources="cargurus" data-odo="50096" data-price="32549" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/446371628" target="_blank" rel="noopener" data-unit="7SAYGDEE6PF906016" data-sources="cargurus" data-odo="50096" data-price="32549" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6PF906016" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,549</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">50,096 mi · Newark, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE6PF906016 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449174464" target="_blank" rel="noopener" data-sources="cargurus" data-odo="38430" data-price="32584" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449174464" target="_blank" rel="noopener" data-unit="7SAYGDEE8PA122790" data-sources="cargurus" data-odo="38430" data-price="32584" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PA122790" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,584</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">38,430 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PA122790 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/442569280" target="_blank" rel="noopener" data-sources="cargurus" data-odo="44492" data-price="32585" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/442569280" target="_blank" rel="noopener" data-unit="7SAYGAEE3PF812089" data-sources="cargurus" data-odo="44492" data-price="32585" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEE3PF812089" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,585</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">44,492 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEE3PF812089 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449535108" target="_blank" rel="noopener" data-sources="cargurus" data-odo="25545" data-price="32740" data-year="2023" data-color="BLACK" data-trim="RWD">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449535108" target="_blank" rel="noopener" data-unit="7SAYGDED9PF979923" data-sources="cargurus" data-odo="25545" data-price="32740" data-year="2023" data-color="BLACK" data-trim="RWD">
+      <button class="star" data-unit="7SAYGDED9PF979923" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,740</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y RWD <span class="tag">CarGurus</span></div>
       <div class="meta">25,545 mi · Elk Grove, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDED9PF979923 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451689953" target="_blank" rel="noopener" data-sources="cargurus" data-odo="47192" data-price="32795" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451689953" target="_blank" rel="noopener" data-unit="7SAYGAEE6PF828593" data-sources="cargurus" data-odo="47192" data-price="32795" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEE6PF828593" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,795</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">47,192 mi · El Cerrito, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEE6PF828593 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/445841164" target="_blank" rel="noopener" data-sources="cargurus" data-odo="30586" data-price="32814" data-year="2022" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/445841164" target="_blank" rel="noopener" data-unit="7SAYGDEE8NF559835" data-sources="cargurus" data-odo="30586" data-price="32814" data-year="2022" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8NF559835" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,814</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2022 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">30,586 mi · Colma, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8NF559835 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451430280" target="_blank" rel="noopener" data-sources="cargurus" data-odo="44775" data-price="32870" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451430280" target="_blank" rel="noopener" data-unit="7SAYGDEE0PF625913" data-sources="cargurus" data-odo="44775" data-price="32870" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0PF625913" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,870</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">44,775 mi · Mountain View, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE0PF625913 </div>
     </a>
-    <a class="card" href="https://www.craigslist.org/view/d/san-leandro-2022-tesla-model-awd-long/1V1zQkcgbHHm72UjCyWuqZ" target="_blank" rel="noopener" data-sources="craigslist" data-odo="49708" data-price="32888" data-year="2022" data-color="" data-trim="Long Range">
+    <a class="card" href="https://www.craigslist.org/view/d/san-leandro-2022-tesla-model-awd-long/1V1zQkcgbHHm72UjCyWuqZ" target="_blank" rel="noopener" data-unit="7SAYGDEE7NF330420" data-sources="craigslist" data-odo="49708" data-price="32888" data-year="2022" data-color="" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7NF330420" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,888</div>
       <div class="title"><span class="dot" style="background:#888"></span>2022 Model Y Tesla Model Y AWD Long Range <span class="tag">Craigslist</span></div>
       <div class="meta">49,708 mi · east bay area, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE7NF330420 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449269955" target="_blank" rel="noopener" data-sources="cargurus" data-odo="27763" data-price="32888" data-year="2021" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449269955" target="_blank" rel="noopener" data-unit="5YJYGAEE5MF218502" data-sources="cargurus" data-odo="27763" data-price="32888" data-year="2021" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGAEE5MF218502" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,888</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2021 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">27,763 mi · Santa Clara, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGAEE5MF218502 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452174636" target="_blank" rel="noopener" data-sources="cargurus" data-odo="32495" data-price="32940" data-year="2023" data-color="UNKNOWN" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452174636" target="_blank" rel="noopener" data-unit="7SAYGDEE6PF826912" data-sources="cargurus" data-odo="32495" data-price="32940" data-year="2023" data-color="UNKNOWN" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6PF826912" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,940</div>
       <div class="title"><span class="dot" style="background:#888"></span>2023 Unknown Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">32,495 mi · San Rafael, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE6PF826912 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/442852627" target="_blank" rel="noopener" data-sources="cargurus" data-odo="35107" data-price="32997" data-year="2023" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/442852627" target="_blank" rel="noopener" data-unit="7SAYGDEE8PF647464" data-sources="cargurus" data-odo="35107" data-price="32997" data-year="2023" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PF647464" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,997</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2023 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">35,107 mi · Colma, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PF647464 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/444993070" target="_blank" rel="noopener" data-sources="cargurus" data-odo="25796" data-price="32998" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/444993070" target="_blank" rel="noopener" data-unit="7SAYGDEE6PA111867" data-sources="cargurus" data-odo="25796" data-price="32998" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6PA111867" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,998</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">25,796 mi · Colma, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE6PA111867 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448334976" target="_blank" rel="noopener" data-sources="cargurus" data-odo="43996" data-price="32998" data-year="2023" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448334976" target="_blank" rel="noopener" data-unit="7SAYGAEE2PF740737" data-sources="cargurus" data-odo="43996" data-price="32998" data-year="2023" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEE2PF740737" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,998</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2023 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">43,996 mi · Pleasanton, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEE2PF740737 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450751877" target="_blank" rel="noopener" data-sources="cargurus" data-odo="42628" data-price="32998" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450751877" target="_blank" rel="noopener" data-unit="7SAYGDEE6PF713154" data-sources="cargurus" data-odo="42628" data-price="32998" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6PF713154" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,998</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">42,628 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE6PF713154 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452181881" target="_blank" rel="noopener" data-sources="cargurus" data-odo="62436" data-price="32999" data-year="2022" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452181881" target="_blank" rel="noopener" data-unit="7SAYGDEE0NF354493" data-sources="cargurus" data-odo="62436" data-price="32999" data-year="2022" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0NF354493" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$32,999</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2022 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">62,436 mi · Concord, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE0NF354493 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/450456725" target="_blank" rel="noopener" data-sources="cargurus" data-odo="46238" data-price="33000" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/450456725" target="_blank" rel="noopener" data-unit="7SAYGDEE4PA130014" data-sources="cargurus" data-odo="46238" data-price="33000" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE4PA130014" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,000</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">46,238 mi · Colma, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE4PA130014 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE6MF283814?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="43917" data-price="33000" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE6MF283814?titleStatus=used" target="_blank" rel="noopener" data-unit="5YJYGDEE6MF283814" data-sources="tesla" data-odo="43917" data-price="33000" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE6MF283814" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,000</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range All-Wheel Drive</div>
       <div class="meta">43,917 mi · Fremont, CA · ~295 mi range</div>
       <div class="meta vin">VIN 5YJYGDEE6MF283814 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE4NF353105?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="34329" data-price="33000" data-year="2022" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE4NF353105?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE4NF353105" data-sources="tesla" data-odo="34329" data-price="33000" data-year="2022" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE4NF353105" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,000</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2022 Solid Black Model Y Long Range All-Wheel Drive</div>
       <div class="meta">34,329 mi · Colma, CA · ~282 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE4NF353105 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE6PF739320?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="48662" data-price="33200" data-year="2023" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE6PF739320?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE6PF739320" data-sources="tesla" data-odo="48662" data-price="33200" data-year="2023" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6PF739320" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,200</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2023 Red Multi-Coat Model Y Long Range All-Wheel Drive</div>
       <div class="meta">48,662 mi · Fremont, CA · ~288 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE6PF739320 <span class="acc">⚠️ prior accident</span></div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDED8PF947111?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="19304" data-price="33200" data-year="2023" data-color="GREY" data-trim="RWD">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDED8PF947111?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDED8PF947111" data-sources="tesla" data-odo="19304" data-price="33200" data-year="2023" data-color="GREY" data-trim="RWD">
+      <button class="star" data-unit="7SAYGDED8PF947111" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,200</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Rear-Wheel Drive</div>
       <div class="meta">19,304 mi · Fremont, CA · ~245 mi range</div>
       <div class="meta vin">VIN 7SAYGDED8PF947111 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE8MF283118?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="23015" data-price="33300" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE8MF283118?titleStatus=used" target="_blank" rel="noopener" data-unit="5YJYGDEE8MF283118" data-sources="tesla" data-odo="23015" data-price="33300" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE8MF283118" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,300</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">23,015 mi · Fremont, CA · ~283 mi range</div>
       <div class="meta vin">VIN 5YJYGDEE8MF283118 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE1MF275779?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="20022" data-price="33400" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE1MF275779?titleStatus=used" target="_blank" rel="noopener" data-unit="5YJYGDEE1MF275779" data-sources="tesla" data-odo="20022" data-price="33400" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE1MF275779" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,400</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">20,022 mi · Fremont, CA · ~298 mi range</div>
       <div class="meta vin">VIN 5YJYGDEE1MF275779 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE8PF675510?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="54546" data-price="33400" data-year="2023" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE8PF675510?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE8PF675510" data-sources="tesla" data-odo="54546" data-price="33400" data-year="2023" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PF675510" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,400</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2023 Deep Blue Model Y Long Range All-Wheel Drive</div>
       <div class="meta">54,546 mi · Fremont, CA · ~289 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE8PF675510 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451268039" target="_blank" rel="noopener" data-sources="cargurus" data-odo="44898" data-price="33440" data-year="2022" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451268039" target="_blank" rel="noopener" data-unit="7SAYGDEE4NF492506" data-sources="cargurus" data-odo="44898" data-price="33440" data-year="2022" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE4NF492506" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,440</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2022 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">44,898 mi · Concord, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE4NF492506 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/452168929" target="_blank" rel="noopener" data-sources="cargurus" data-odo="40673" data-price="33491" data-year="2023" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/452168929" target="_blank" rel="noopener" data-unit="7SAYGDEE8PF644001" data-sources="cargurus" data-odo="40673" data-price="33491" data-year="2023" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PF644001" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,491</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2023 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">40,673 mi · Pleasanton, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PF644001 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/444834974" target="_blank" rel="noopener" data-sources="cargurus" data-odo="35982" data-price="33498" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/444834974" target="_blank" rel="noopener" data-unit="7SAYGDEE3PF706422" data-sources="cargurus" data-odo="35982" data-price="33498" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE3PF706422" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,498</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">35,982 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE3PF706422 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE1MF295062?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="27913" data-price="33500" data-year="2021" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/5YJYGDEE1MF295062?titleStatus=used" target="_blank" rel="noopener" data-unit="5YJYGDEE1MF295062" data-sources="tesla" data-odo="27913" data-price="33500" data-year="2021" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE1MF295062" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,500</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2021 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">27,913 mi · Fremont, CA · ~293 mi range</div>
       <div class="meta vin">VIN 5YJYGDEE1MF295062 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447406591" target="_blank" rel="noopener" data-sources="cargurus" data-odo="47772" data-price="33500" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447406591" target="_blank" rel="noopener" data-unit="7SAYGAEEXPF603321" data-sources="cargurus" data-odo="47772" data-price="33500" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEEXPF603321" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,500</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">47,772 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEEXPF603321 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/438447192" target="_blank" rel="noopener" data-sources="cargurus" data-odo="32148" data-price="33598" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/438447192" target="_blank" rel="noopener" data-unit="7SAYGDEE1PF627489" data-sources="cargurus" data-odo="32148" data-price="33598" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE1PF627489" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,598</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">32,148 mi · San Jose, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE1PF627489 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDED9PF941883?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="13257" data-price="33600" data-year="2023" data-color="BLUE" data-trim="RWD">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDED9PF941883?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDED9PF941883" data-sources="tesla" data-odo="13257" data-price="33600" data-year="2023" data-color="BLUE" data-trim="RWD">
+      <button class="star" data-unit="7SAYGDED9PF941883" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,600</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2023 Deep Blue Model Y Rear-Wheel Drive</div>
       <div class="meta">13,257 mi · Colma, CA · ~247 mi range</div>
       <div class="meta vin">VIN 7SAYGDED9PF941883 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE7PF742369?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="32620" data-price="33600" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE7PF742369?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE7PF742369" data-sources="tesla" data-odo="32620" data-price="33600" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7PF742369" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,600</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range All-Wheel Drive</div>
       <div class="meta">32,620 mi · Fremont, CA · ~290 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE7PF742369 <span class="acc">⚠️ prior accident</span></div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451806929" target="_blank" rel="noopener" data-sources="cargurus" data-odo="58194" data-price="33640" data-year="2021" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451806929" target="_blank" rel="noopener" data-unit="5YJYGDEE7MF087154" data-sources="cargurus" data-odo="58194" data-price="33640" data-year="2021" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE7MF087154" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,640</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2021 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">58,194 mi · Elk Grove, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE7MF087154 </div>
     </a>
-    <a class="card" href="https://www.craigslist.org/view/d/sacramento-2023-tesla-model-long-range/q9jH87jY6ZGWbuJzqk1gHz" target="_blank" rel="noopener" data-sources="craigslist" data-odo="55688" data-price="33691" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.craigslist.org/view/d/sacramento-2023-tesla-model-long-range/q9jH87jY6ZGWbuJzqk1gHz" target="_blank" rel="noopener" data-unit="7SAYGDEE4PF635201" data-sources="craigslist" data-odo="55688" data-price="33691" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE4PF635201" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,691</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Tesla Model Y long range AWD <span class="tag">Craigslist</span></div>
       <div class="meta">55,688 mi · (916)613-3040 Sacramento, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE4PF635201 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE0NF544388?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="50580" data-price="33800" data-year="2022" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE0NF544388?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE0NF544388" data-sources="tesla" data-odo="50580" data-price="33800" data-year="2022" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0NF544388" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,800</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2022 Red Multi-Coat Model Y Long Range All-Wheel Drive</div>
       <div class="meta">50,580 mi · Fremont, CA · ~287 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE0NF544388 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451151094" target="_blank" rel="noopener" data-sources="cargurus" data-odo="52906" data-price="33900" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451151094" target="_blank" rel="noopener" data-unit="7SAYGAEE1PF815198" data-sources="cargurus" data-odo="52906" data-price="33900" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGAEE1PF815198" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,900</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">52,906 mi · Daly City, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGAEE1PF815198 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE8PF816558?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="44085" data-price="33900" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE8PF816558?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE8PF816558" data-sources="tesla" data-odo="44085" data-price="33900" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PF816558" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,900</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range All-Wheel Drive</div>
       <div class="meta">44,085 mi · Colma, CA · ~290 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE8PF816558 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/442938039" target="_blank" rel="noopener" data-sources="cargurus" data-odo="23359" data-price="33978" data-year="2023" data-color="RED" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/442938039" target="_blank" rel="noopener" data-unit="7SAYGDEE0PF635938" data-sources="cargurus" data-odo="23359" data-price="33978" data-year="2023" data-color="RED" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0PF635938" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,978</div>
       <div class="title"><span class="dot" style="background:#b81d24"></span>2023 Red Multi-Coat Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">23,359 mi · Novato, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE0PF635938 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/447402209" target="_blank" rel="noopener" data-sources="cargurus" data-odo="19220" data-price="33988" data-year="2023" data-color="GREY" data-trim="RWD">
+    <a class="card" href="https://www.cargurus.com/Cars/link/447402209" target="_blank" rel="noopener" data-unit="7SAYGDED7PF978849" data-sources="cargurus" data-odo="19220" data-price="33988" data-year="2023" data-color="GREY" data-trim="RWD">
+      <button class="star" data-unit="7SAYGDED7PF978849" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,988</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y RWD <span class="tag">CarGurus</span></div>
       <div class="meta">19,220 mi · Salinas, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDED7PF978849 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451809577" target="_blank" rel="noopener" data-sources="cargurus" data-odo="32746" data-price="33995" data-year="2023" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451809577" target="_blank" rel="noopener" data-unit="7SAYGDEEXPF759800" data-sources="cargurus" data-odo="32746" data-price="33995" data-year="2023" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEEXPF759800" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,995</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2023 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">32,746 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEEXPF759800 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448426429" target="_blank" rel="noopener" data-sources="cargurus" data-odo="43433" data-price="33995" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448426429" target="_blank" rel="noopener" data-unit="7SAYGDEE8PA077897" data-sources="cargurus" data-odo="43433" data-price="33995" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PA077897" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,995</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">43,433 mi · Hayward, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PA077897 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451200112" target="_blank" rel="noopener" data-sources="cargurus" data-odo="41705" data-price="33995" data-year="2022" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451200112" target="_blank" rel="noopener" data-unit="7SAYGDEE1NF404978" data-sources="cargurus" data-odo="41705" data-price="33995" data-year="2022" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE1NF404978" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,995</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2022 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">41,705 mi · Sacramento, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE1NF404978 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451903784" target="_blank" rel="noopener" data-sources="cargurus" data-odo="30592" data-price="33999" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451903784" target="_blank" rel="noopener" data-unit="7SAYGDEE8PF621947" data-sources="cargurus" data-odo="30592" data-price="33999" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PF621947" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,999</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">30,592 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PF621947 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451693676" target="_blank" rel="noopener" data-sources="cargurus" data-odo="33747" data-price="33999" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451693676" target="_blank" rel="noopener" data-unit="7SAYGDEEXPF740471" data-sources="cargurus" data-odo="33747" data-price="33999" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEEXPF740471" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,999</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">33,747 mi · San Francisco, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEEXPF740471 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/448921286" target="_blank" rel="noopener" data-sources="cargurus" data-odo="23834" data-price="33999" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/448921286" target="_blank" rel="noopener" data-unit="7SAYGDEE0PF787587" data-sources="cargurus" data-odo="23834" data-price="33999" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE0PF787587" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$33,999</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">23,834 mi · Santa Clara, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE0PF787587 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE2PA125734?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="38270" data-price="34000" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE2PA125734?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE2PA125734" data-sources="tesla" data-odo="38270" data-price="34000" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE2PA125734" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,000</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range All-Wheel Drive</div>
       <div class="meta">38,270 mi · Colma, CA · ~293 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE2PA125734 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE3PA129890?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="52905" data-price="34000" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE3PA129890?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE3PA129890" data-sources="tesla" data-odo="52905" data-price="34000" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE3PA129890" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,000</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range All-Wheel Drive</div>
       <div class="meta">52,905 mi · Fremont, CA · ~282 mi range</div>
       <div class="meta vin">VIN 7SAYGDEE3PA129890 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451221592" target="_blank" rel="noopener" data-sources="cargurus" data-odo="24870" data-price="34084" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451221592" target="_blank" rel="noopener" data-unit="7SAYGDEE6PA098540" data-sources="cargurus" data-odo="24870" data-price="34084" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE6PA098540" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,084</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">24,870 mi · Walnut Creek, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE6PA098540 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDED6PF961461?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="17287" data-price="34300" data-year="2023" data-color="GREY" data-trim="RWD">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDED6PF961461?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDED6PF961461" data-sources="tesla" data-odo="17287" data-price="34300" data-year="2023" data-color="GREY" data-trim="RWD">
+      <button class="star" data-unit="7SAYGDED6PF961461" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,300</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Rear-Wheel Drive</div>
       <div class="meta">17,287 mi · Fremont, CA · ~247 mi range</div>
       <div class="meta vin">VIN 7SAYGDED6PF961461 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451913928" target="_blank" rel="noopener" data-sources="cargurus" data-odo="60700" data-price="34729" data-year="2021" data-color="UNKNOWN" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451913928" target="_blank" rel="noopener" data-unit="5YJYGDEE3MF270373" data-sources="cargurus" data-odo="60700" data-price="34729" data-year="2021" data-color="UNKNOWN" data-trim="Long Range">
+      <button class="star" data-unit="5YJYGDEE3MF270373" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,729</div>
       <div class="title"><span class="dot" style="background:#888"></span>2021 Unknown Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">60,700 mi · Novato, CA · range n/a</div>
       <div class="meta vin">VIN 5YJYGDEE3MF270373 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/449970952" target="_blank" rel="noopener" data-sources="cargurus" data-odo="29000" data-price="34758" data-year="2023" data-color="WHITE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/449970952" target="_blank" rel="noopener" data-unit="7SAYGDEE5PA035462" data-sources="cargurus" data-odo="29000" data-price="34758" data-year="2023" data-color="WHITE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE5PA035462" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,758</div>
       <div class="title"><span class="dot" style="background:#e9eaec"></span>2023 Pearl White Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">29,000 mi · Dublin, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE5PA035462 </div>
     </a>
-    <a class="card" href="https://www.craigslist.org/view/d/novato-2023-tesla-model-long-range/xk6vSE5Yd8hbPWyTJsAoRF" target="_blank" rel="noopener" data-sources="craigslist" data-odo="26579" data-price="34900" data-year="2023" data-color="BLACK" data-trim="Long Range">
+    <a class="card" href="https://www.craigslist.org/view/d/novato-2023-tesla-model-long-range/xk6vSE5Yd8hbPWyTJsAoRF" target="_blank" rel="noopener" data-unit="7SAYGDEE5PA070003" data-sources="craigslist" data-odo="26579" data-price="34900" data-year="2023" data-color="BLACK" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE5PA070003" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,900</div>
       <div class="title"><span class="dot" style="background:#16181d"></span>2023 Solid Black Model Y Tesla Model Y <span class="tag">Craigslist</span></div>
       <div class="meta">26,579 mi · novato, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE5PA070003 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451591113" target="_blank" rel="noopener" data-sources="cargurus" data-odo="23821" data-price="34988" data-year="2023" data-color="SILVER" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451591113" target="_blank" rel="noopener" data-unit="7SAYGDEEXPF620332" data-sources="cargurus" data-odo="23821" data-price="34988" data-year="2023" data-color="SILVER" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEEXPF620332" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,988</div>
       <div class="title"><span class="dot" style="background:#c7ccd1"></span>2023 Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">23,821 mi · Livermore, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEEXPF620332 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/451812265" target="_blank" rel="noopener" data-sources="cargurus" data-odo="22298" data-price="34998" data-year="2023" data-color="BLUE" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/451812265" target="_blank" rel="noopener" data-unit="7SAYGDEE1PA120539" data-sources="cargurus" data-odo="22298" data-price="34998" data-year="2023" data-color="BLUE" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE1PA120539" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$34,998</div>
       <div class="title"><span class="dot" style="background:#1f3a93"></span>2023 Deep Blue Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">22,298 mi · Sunnyvale, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE1PA120539 </div>
     </a>
-    <a class="card" href="https://www.cargurus.com/Cars/link/443936606" target="_blank" rel="noopener" data-sources="cargurus" data-odo="26885" data-price="35000" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.cargurus.com/Cars/link/443936606" target="_blank" rel="noopener" data-unit="7SAYGDEE8PA106489" data-sources="cargurus" data-odo="26885" data-price="35000" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE8PA106489" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$35,000</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range AWD <span class="tag">CarGurus</span></div>
       <div class="meta">26,885 mi · Pittsburg, CA · range n/a</div>
       <div class="meta vin">VIN 7SAYGDEE8PA106489 </div>
     </a>
-    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE7PF584552?titleStatus=used" target="_blank" rel="noopener" data-sources="tesla" data-odo="24962" data-price="35000" data-year="2023" data-color="GREY" data-trim="Long Range">
+    <a class="card" href="https://www.tesla.com/my/order/7SAYGDEE7PF584552?titleStatus=used" target="_blank" rel="noopener" data-unit="7SAYGDEE7PF584552" data-sources="tesla" data-odo="24962" data-price="35000" data-year="2023" data-color="GREY" data-trim="Long Range">
+      <button class="star" data-unit="7SAYGDEE7PF584552" type="button" aria-label="star car" aria-pressed="false">☆</button>
       <div class="price">$35,000</div>
       <div class="title"><span class="dot" style="background:#4b4f54"></span>2023 Midnight Silver Model Y Long Range All-Wheel Drive</div>
       <div class="meta">24,962 mi · Fremont, CA · ~297 mi range</div>
@@ -1027,9 +1207,16 @@
     </a>
   <footer>Auto-generated from public inventory. Prices/availability change fast — tap a card to view the live listing.</footer>
 <script>
+window.ANNOTATE_CONFIG={"endpoint": "https://tesla-search-dashboard.netlify.app/api/annotate", "appSecret": "", "lsKey": "cars-optimistic-v1"};
+window.USER_STATE={"stars": [], "views": []};
+</script>
+<script src="assets/annotate.js"></script>
+<script>
 (function() {
+  "use strict";
   var $ = function(id) { return document.getElementById(id); };
   var sel = function(q) { return Array.prototype.slice.call(document.querySelectorAll(q)); };
+  var list = (function(){ var c=sel('.card'); return c.length ? c[0].parentNode : null; })();
   var cards = sel('.card');
   var srcChips = sel('#srcChips .chip');
   var trimChips = sel('#trimChips .chip');
@@ -1037,17 +1224,49 @@
   var range = $('odoRange'), odoLabel = $('odoLabel');
   var priceMin = $('priceMin'), priceMax = $('priceMax');
   var yearMin = $('yearMin'), yearMax = $('yearMax');
+  var sortSel = $('sortSel'), starOnly = $('starOnly');
   var countEl = $('count');
   var sliderMax = range ? +range.max : Infinity;
+  var SORT_DEFAULT = 'price-asc';
 
-  // Active set for a multi-toggle chip group, keyed by data-attr. null => the
-  // group isn't present (so it imposes no constraint).
+  // ----- annotate round-trip (stars + saved views) -----
+  var CFG = window.ANNOTATE_CONFIG || {};
+  var US = window.USER_STATE || { stars: [], views: [] };
+  var A = window.Annotate || null;
+  var LIVE = !!(A && CFG.endpoint);              // write actions only when configured
+  var authStars = {}; (US.stars || []).forEach(function(u) { authStars[u] = 1; });
+  if (A) A.reconcile({ stars: US.stars || [], views: (US.views || []).map(function(v){ return v.id; }) });
+  function optStars() { return A ? A.optimisticStars() : []; }
+  function isStarred(u) { return !!authStars[u] || optStars().indexOf(u) !== -1; }
+
+  // ----- chip-group helpers -----
+  // The "active set" of a multi-toggle group, keyed by data-attr. null => the
+  // group isn't on the page (imposes no constraint). For the spec we record a
+  // group only when it is NOT all-on (an all-on group == no constraint), keeping
+  // saved views + deep-link URLs short.
   function active(chips, attr) {
     if (!chips.length) return null;
     var on = {};
     chips.forEach(function(c) { if (c.classList.contains('active')) on[c.dataset[attr]] = 1; });
     return on;
   }
+  function chipSpec(chips, attr) {
+    if (!chips.length) return null;
+    var onVals = [], all = true;
+    chips.forEach(function(c) {
+      var v = c.dataset[attr];
+      if (c.classList.contains('active')) onVals.push(v); else all = false;
+    });
+    return all ? null : onVals;                  // null => no constraint (all on)
+  }
+  function applyChipSpec(chips, attr, want) {
+    if (!chips.length) return;
+    if (want == null) { chips.forEach(function(c){ c.classList.add('active'); }); return; }
+    var set = {}; want.forEach(function(v){ set[v] = 1; });
+    chips.forEach(function(c){ c.classList.toggle('active', !!set[c.dataset[attr]]); });
+  }
+
+  // ----- filter + sort -----
   function apply() {
     var srcOn = active(srcChips, 'src');
     var trimOn = active(trimChips, 'trim');
@@ -1058,6 +1277,7 @@
     var pMax = priceMax && priceMax.value ? +priceMax.value : Infinity;
     var yMin = yearMin ? +yearMin.value : -Infinity;
     var yMax = yearMax ? +yearMax.value : Infinity;
+    var so = !!(starOnly && starOnly.checked);
     var shown = 0;
     cards.forEach(function(card) {
       var d = card.dataset;
@@ -1069,22 +1289,247 @@
       var odoOk = atMax || d.odo === '' || +d.odo <= cap;
       var priceOk = d.price === '' || (+d.price >= pMin && +d.price <= pMax);
       var yearOk = d.year === '' || (+d.year >= yMin && +d.year <= yMax);
-      var vis = srcOk && trimOk && colOk && odoOk && priceOk && yearOk;
+      var starOk = !so || isStarred(d.unit);
+      var vis = srcOk && trimOk && colOk && odoOk && priceOk && yearOk && starOk;
       card.style.display = vis ? '' : 'none';
       if (vis) shown++;
     });
     if (countEl) countEl.textContent = shown;
+    sortCards();
+    updateUrl();        // keep the address bar a shareable deep-link to this view
+    refreshViewBar();   // recompute dirty + which view actions to show
   }
-  function bind(chips) {
-    chips.forEach(function(c) {
-      c.addEventListener('click', function() { c.classList.toggle('active'); apply(); });
+  function sortCards() {
+    if (!list || !sortSel) return;
+    var s = sortSel.value || SORT_DEFAULT;
+    var asc = s.indexOf('-asc') !== -1, key = s.replace('-asc', '').replace('-desc', '');
+    var vis = cards.filter(function(c) { return c.style.display !== 'none'; });
+    vis.sort(function(a, b) {
+      var av = parseFloat(a.dataset[key]), bv = parseFloat(b.dataset[key]);
+      var an = isNaN(av), bn = isNaN(bv);
+      if (an && bn) return 0; if (an) return 1; if (bn) return -1;   // missing sorts last
+      return asc ? (av - bv) : (bv - av);
     });
+    vis.forEach(function(c) { list.appendChild(c); });
   }
+
+  // ----- query spec (shared by saved views + the URL deep-link) -----
+  function readSpec() {
+    return {
+      sort: sortSel ? sortSel.value : SORT_DEFAULT,
+      src: chipSpec(srcChips, 'src'),
+      trim: chipSpec(trimChips, 'trim'),
+      color: chipSpec(colorChips, 'color'),
+      pmin: priceMin && priceMin.value ? priceMin.value : '',
+      pmax: priceMax && priceMax.value ? priceMax.value : '',
+      // The year selects default to their extreme option (== no constraint); only
+      // a non-extreme value is a real filter worth recording in the spec/URL.
+      ymin: yearAt(yearMin, 'first'),
+      ymax: yearAt(yearMax, 'last'),
+      odo: (range && +range.value < sliderMax) ? String(range.value) : '',
+      star: !!(starOnly && starOnly.checked)
+    };
+  }
+  function applySpec(spec) {
+    spec = spec || {};
+    if (sortSel) sortSel.value = spec.sort || SORT_DEFAULT;
+    applyChipSpec(srcChips, 'src', spec.src == null ? null : spec.src);
+    applyChipSpec(trimChips, 'trim', spec.trim == null ? null : spec.trim);
+    applyChipSpec(colorChips, 'color', spec.color == null ? null : spec.color);
+    if (priceMin) priceMin.value = spec.pmin || '';
+    if (priceMax) priceMax.value = spec.pmax || '';
+    if (yearMin) setYear(yearMin, spec.ymin, 'first');
+    if (yearMax) setYear(yearMax, spec.ymax, 'last');
+    if (range) range.value = (spec.odo !== '' && spec.odo != null) ? spec.odo : sliderMax;
+    if (starOnly) starOnly.checked = !!spec.star;
+    apply();
+  }
+  // Read a year select's value, but treat the extreme option (first/last) as "no
+  // constraint" → '' (so it stays out of the spec + the URL deep-link).
+  function yearAt(elt, end) {
+    if (!elt || !elt.options.length) return '';
+    var extreme = (end === 'first') ? elt.options[0].value
+                                    : elt.options[elt.options.length - 1].value;
+    return (elt.value === extreme) ? '' : elt.value;
+  }
+  // Restore a saved <select> value faithfully: '' resets to the extreme option;
+  // a stale year (no longer an option) gets a marked option injected so the
+  // constraint still applies honestly rather than snapping silently to an extreme.
+  function setYear(elt, val, end) {
+    Array.prototype.slice.call(elt.querySelectorAll('option.stale')).forEach(function(o){ o.remove(); });
+    if (val == null || val === '') {
+      elt.value = (end === 'first') ? elt.options[0].value
+                                    : elt.options[elt.options.length - 1].value;
+      return;
+    }
+    val = String(val); elt.value = val;
+    if (elt.value !== val) {
+      var o = document.createElement('option'); o.value = val; o.textContent = val + ' (0)';
+      o.className = 'stale'; elt.appendChild(o); elt.value = val;
+    }
+  }
+  function arrEq(a, b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length !== b.length) return false;
+    var sa = a.slice().sort(), sb = b.slice().sort();
+    for (var i = 0; i < sa.length; i++) if (sa[i] !== sb[i]) return false;
+    return true;
+  }
+  function normSpec(s) {
+    s = s || {};
+    return { sort: s.sort || SORT_DEFAULT, src: s.src || null, trim: s.trim || null,
+             color: s.color || null, pmin: s.pmin || '', pmax: s.pmax || '',
+             ymin: s.ymin ? String(s.ymin) : '', ymax: s.ymax ? String(s.ymax) : '',
+             odo: (s.odo === '' || s.odo == null) ? '' : String(s.odo), star: !!s.star };
+  }
+  function specEquals(a, b) {
+    a = normSpec(a); b = normSpec(b);
+    return a.sort === b.sort && a.pmin === b.pmin && a.pmax === b.pmax &&
+           a.ymin === b.ymin && a.ymax === b.ymax && a.odo === b.odo && a.star === b.star &&
+           arrEq(a.src, b.src) && arrEq(a.trim, b.trim) && arrEq(a.color, b.color);
+  }
+  var DEFAULT_SPEC = normSpec({});
+
+  // ----- URL deep-links: readable query params, defaults omitted -----
+  function specToQuery(s) {
+    var p = new URLSearchParams();
+    if (s.sort && s.sort !== SORT_DEFAULT) p.set('sort', s.sort);
+    if (s.src) p.set('src', s.src.join(','));
+    if (s.trim) p.set('trim', s.trim.join(','));
+    if (s.color) p.set('color', s.color.join(','));
+    if (s.pmin) p.set('pmin', s.pmin);
+    if (s.pmax) p.set('pmax', s.pmax);
+    if (s.ymin) p.set('ymin', s.ymin);
+    if (s.ymax) p.set('ymax', s.ymax);
+    if (s.odo) p.set('odo', s.odo);
+    if (s.star) p.set('star', '1');
+    return p.toString();
+  }
+  function queryToSpec() {
+    var p = new URLSearchParams(location.search);
+    if (!p.toString()) return null;
+    var csv = function(k) { return p.get(k) ? p.get(k).split(',') : null; };
+    return { sort: p.get('sort') || SORT_DEFAULT, src: csv('src'), trim: csv('trim'),
+             color: csv('color'), pmin: p.get('pmin') || '', pmax: p.get('pmax') || '',
+             ymin: p.get('ymin') || '', ymax: p.get('ymax') || '',
+             odo: p.get('odo') || '', star: p.get('star') === '1' };
+  }
+  function updateUrl() {
+    if (!history.replaceState) return;
+    var qs = specToQuery(readSpec());
+    history.replaceState(null, '', qs ? ('?' + qs) : location.pathname);
+  }
+
+  // ----- saved views (named filter/sort combos) -----
+  var viewSel = $('viewsel'), saveBtn = $('view-save'), saveAsBtn = $('view-saveas'),
+      revertBtn = $('view-revert'), renameBtn = $('view-rename'), delBtn = $('view-del'),
+      dirtyDot = $('view-dirty');
+  // Merge authoritative views (USER_STATE) with the local optimistic overlay
+  // (upserts + tombstones) so the saving device updates immediately.
+  function allViews() {
+    var byId = {};
+    (US.views || []).forEach(function(v) { byId[v.id] = { id: v.id, name: v.name, spec: v.spec || {} }; });
+    var opt = (A && A.optimisticViews) ? A.optimisticViews() : {};
+    Object.keys(opt).forEach(function(id) {
+      if (opt[id].deleted) delete byId[id];
+      else byId[id] = { id: id, name: opt[id].name, spec: opt[id].spec || {} };
+    });
+    return Object.keys(byId).map(function(id) { return byId[id]; }).sort(function(a, b) {
+      return (a.name || '').toLowerCase() < (b.name || '').toLowerCase() ? -1 : 1; });
+  }
+  function viewById(id) { if (!id) return null; var vs = allViews();
+    for (var i = 0; i < vs.length; i++) if (vs[i].id === id) return vs[i]; return null; }
+  function viewByName(n) { n = (n || '').toLowerCase(); var vs = allViews();
+    for (var i = 0; i < vs.length; i++) if ((vs[i].name || '').toLowerCase() === n) return vs[i]; return null; }
+  function selectionSpec() { var v = viewSel && viewSel.value;
+    if (!v || v === '__all') return DEFAULT_SPEC; var view = viewById(v); return view ? view.spec : DEFAULT_SPEC; }
+  function isDirty() { return !specEquals(readSpec(), selectionSpec()); }
+  function refreshViewBar() {
+    if (!viewSel) return;
+    var v = viewSel.value, isAll = (!v || v === '__all'), view = isAll ? null : viewById(v), dirty = isDirty();
+    if (dirtyDot) dirtyDot.hidden = !dirty;
+    if (saveBtn) saveBtn.hidden = !(LIVE && view && dirty);
+    if (saveAsBtn) saveAsBtn.hidden = !(LIVE && dirty);
+    if (revertBtn) revertBtn.hidden = !dirty;
+    if (renameBtn) renameBtn.hidden = !(LIVE && view);
+    if (delBtn) delBtn.hidden = !(LIVE && view);
+  }
+  function renderViews() {
+    if (!viewSel) return;
+    var cur = viewSel.value || '__all';
+    viewSel.innerHTML = '<option value="__all">All cars</option>';
+    allViews().forEach(function(v) {
+      var o = document.createElement('option'); o.value = v.id; o.textContent = v.name; viewSel.appendChild(o); });
+    viewSel.value = (cur !== '__all' && viewById(cur)) ? cur : '__all';
+    refreshViewBar();
+  }
+  function matchingSelection() { var cur = readSpec(), vs = allViews();
+    for (var i = 0; i < vs.length; i++) if (specEquals(cur, vs[i].spec)) return vs[i].id;
+    return '__all'; }
+
+  if (viewSel) viewSel.addEventListener('change', function() {
+    var v = viewSel.value, view = (v && v !== '__all') ? viewById(v) : null;
+    applySpec(view ? view.spec : DEFAULT_SPEC);
+  });
+  if (saveBtn) saveBtn.addEventListener('click', function() {
+    if (!LIVE) return; var view = viewById(viewSel && viewSel.value); if (!view) return;
+    A.saveView(view.id, view.name, readSpec()); refreshViewBar();
+  });
+  if (saveAsBtn) saveAsBtn.addEventListener('click', function() {
+    if (!LIVE) return;
+    var base = viewById(viewSel && viewSel.value), name = prompt('Name this view', base ? (base.name + ' copy') : '');
+    if (name === null) return; name = name.trim(); if (!name) return;
+    var existing = viewByName(name), id = existing ? existing.id : A._intentId();   // same name overwrites
+    A.saveView(id, name, readSpec());
+    renderViews(); viewSel.value = id; refreshViewBar();
+  });
+  if (revertBtn) revertBtn.addEventListener('click', function() {
+    var view = viewById(viewSel && viewSel.value);
+    applySpec(view ? view.spec : DEFAULT_SPEC);
+  });
+  if (renameBtn) renameBtn.addEventListener('click', function() {
+    if (!LIVE) return; var view = viewById(viewSel && viewSel.value); if (!view) return;
+    var name = prompt('Rename view', view.name); if (name === null) return;
+    name = name.trim(); if (!name || name === view.name) return;
+    A.saveView(view.id, name, view.spec);   // rename = upsert same id + spec
+    renderViews(); viewSel.value = view.id; refreshViewBar();
+  });
+  if (delBtn) delBtn.addEventListener('click', function() {
+    if (!LIVE) return; var view = viewById(viewSel && viewSel.value); if (!view) return;
+    if (!confirm('Delete saved view "' + view.name + '"?')) return;
+    A.deleteView(view.id);
+    viewSel.value = '__all'; renderViews();   // keep the filters; now an unsaved "All cars"
+  });
+
+  // ----- stars -----
+  function paintStar(btn) { var on = isStarred(btn.dataset.unit);
+    btn.classList.toggle('on', on); btn.textContent = on ? '★' : '☆';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  sel('.star').forEach(function(btn) {
+    if (!LIVE) { btn.style.display = 'none'; return; }   // read-only: no star affordance
+    paintStar(btn);
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation(); e.preventDefault();
+      A.star(btn.dataset.unit, !isStarred(btn.dataset.unit));
+      paintStar(btn); apply();   // re-run filter (the starred-only toggle may hide/show it)
+    });
+  });
+
+  // ----- bind + init -----
+  function bind(chips) { chips.forEach(function(c) {
+    c.addEventListener('click', function() { c.classList.toggle('active'); apply(); }); }); }
   bind(srcChips); bind(trimChips); bind(colorChips);
   if (range) range.addEventListener('input', apply);
+  if (sortSel) sortSel.addEventListener('change', apply);
+  if (starOnly) starOnly.addEventListener('change', apply);
   [priceMin, priceMax].forEach(function(el) { if (el) el.addEventListener('input', apply); });
   [yearMin, yearMax].forEach(function(el) { if (el) el.addEventListener('change', apply); });
-  apply();
+
+  renderViews();
+  var urlSpec = queryToSpec();
+  if (urlSpec) applySpec(urlSpec); else apply();
+  if (viewSel) { viewSel.value = matchingSelection(); refreshViewBar(); }
 })();
 </script>
 <script>
