@@ -17,6 +17,11 @@
  * secret never appears here. `lsKey` namespaces the optimistic localStorage cache
  * per site so two tenants on different origins never collide (optional — defaults
  * to the sf-rentals key for back-compat with caches written before it existed).
+ *
+ * A preview-only `demo: true` flag (set ONLY by tools/render_preview.py, never the
+ * live publish path) makes the client optimistic-local-only: actions write the
+ * localStorage view but never POST, so the per-PR Netlify deploy preview — which
+ * serves this asset but has no Functions / endpoint — is fully interactive.
  */
 (function (global) {
   "use strict";
@@ -25,6 +30,7 @@
   var ENDPOINT = CFG.endpoint || "/api/annotate";
   var APP_SECRET = CFG.appSecret || "";
   var LS_KEY = CFG.lsKey || "sf-rentals-optimistic-v1";
+  var DEMO = !!CFG.demo;   // preview demo mode: optimistic local-only, no network
 
   // --- intent id ---------------------------------------------------------- //
   function intentId() {
@@ -40,11 +46,12 @@
   function loadLocal() {
     try {
       var v = JSON.parse(global.localStorage.getItem(LS_KEY)) ||
-        { stars: {}, pairs: {}, intents: {}, views: {} };
-      if (!v.views) v.views = {};   // back-fill for caches written before saved views
+        { stars: {}, ratings: {}, pairs: {}, intents: {}, views: {} };
+      if (!v.views) v.views = {};       // back-fill for caches without saved views
+      if (!v.ratings) v.ratings = {};   // back-fill for caches written before #23
       return v;
     } catch (e) {
-      return { stars: {}, pairs: {}, intents: {}, views: {} };
+      return { stars: {}, ratings: {}, pairs: {}, intents: {}, views: {} };
     }
   }
 
@@ -61,6 +68,15 @@
   // --- transport ---------------------------------------------------------- //
   function send(intent) {
     var local = loadLocal();
+    if (DEMO) {
+      // Preview demo mode: keep the optimistic local write, but never touch the
+      // network. The intent is immediately "resolved" (not pending) since there's
+      // no backend to reconcile against — so the page is fully interactive on a
+      // static preview with no Functions / endpoint (no POST, no 404 console noise).
+      local.intents[intent.id] = { kind: intent.kind, ts: intent.ts, pending: false };
+      saveLocal(local);
+      return Promise.resolve(intent.id);
+    }
     local.intents[intent.id] = { kind: intent.kind, ts: intent.ts, pending: true };
     saveLocal(local);
     return fetch(ENDPOINT, {
@@ -78,12 +94,23 @@
   }
 
   // --- public actions ----------------------------------------------------- //
+  // The ordinal triage action (#23): set a unit's rating to "up" / "down", or null
+  // to clear it back to unspecified. Optimistic — the local cache reflects it
+  // instantly; the next publish reconciles. Replaces the boolean `star` toggle; the
+  // legacy `star()` below is kept as a thin alias for any old caller.
+  function rate(unitId, rating) {
+    var local = loadLocal();
+    if (rating === "up" || rating === "down") local.ratings[unitId] = rating;
+    else { delete local.ratings[unitId]; rating = null; }
+    saveLocal(local);
+    return send({ id: intentId(), kind: "rate", unit: unitId, rating: rating, ts: nowIso() });
+  }
+
+  // Legacy boolean star → maps onto the ordinal rating (up / clear). Kept for
+  // back-compat; new UI calls rate() directly.
   function star(unitId, starred) {
     if (starred === undefined) starred = true;
-    var local = loadLocal();
-    if (starred) local.stars[unitId] = true; else delete local.stars[unitId];
-    saveLocal(local);
-    return send({ id: intentId(), kind: "star", unit: unitId, starred: starred, ts: nowIso() });
+    return rate(unitId, starred ? "up" : null);
   }
 
   function assertSame(a, b, snapshot, opts) {
@@ -145,8 +172,21 @@
   }
 
   // --- optimistic read helpers (for render's hydration) ------------------- //
+  // The optimistic rating overlay, keyed by unit id ("up"/"down"). Render merges
+  // this over the authoritative USER_STATE ratings. An explicit cleared rating is
+  // absent here (the key is deleted), so render falls back to authoritative.
+  function optimisticRatings() {
+    return loadLocal().ratings;
+  }
+
+  function optimisticRating(unitId) {
+    return loadLocal().ratings[unitId] || null;
+  }
+
+  // Back-compat: the optimistically-liked ("up") units only.
   function optimisticStars() {
-    return Object.keys(loadLocal().stars);
+    var r = loadLocal().ratings;
+    return Object.keys(r).filter(function (u) { return r[u] === "up"; });
   }
 
   function optimisticPairState(a, b) {
@@ -157,8 +197,19 @@
   function reconcile(authoritative) {
     authoritative = authoritative || {};
     var local = loadLocal();
-    var authStars = authoritative.stars || [];
-    authStars.forEach(function (u) { delete local.stars[u]; });
+    // Ratings reconcile by value: an optimistic rating is reflected once the
+    // authoritative map carries the SAME value (an "up" we set is now an "up"); a
+    // *clear* we made (no local key) needs nothing. authoritative.ratings is the
+    // {uid: "up"|"down"} map from USER_STATE; we also tolerate the legacy `stars`
+    // array (treated as authoritative "up"s) for caches mid-migration.
+    var authRatings = authoritative.ratings || {};
+    (authoritative.stars || []).forEach(function (u) {
+      if (authRatings[u] === undefined) authRatings[u] = "up";
+    });
+    Object.keys(local.ratings).forEach(function (u) {
+      if (authRatings[u] === local.ratings[u]) delete local.ratings[u];
+    });
+    Object.keys(local.stars || {}).forEach(function (u) { delete local.stars[u]; });
     (authoritative.pairs || []).forEach(function (k) { delete local.pairs[k]; });
     (authoritative.intents || []).forEach(function (id) { delete local.intents[id]; });
     // A saved-view upsert is reflected once its id appears authoritatively; a
@@ -174,6 +225,7 @@
   }
 
   global.Annotate = {
+    rate: rate,
     star: star,
     assertSame: assertSame,
     assertDistinct: assertDistinct,
@@ -181,6 +233,8 @@
     revoke: revoke,
     saveView: saveView,
     deleteView: deleteView,
+    optimisticRatings: optimisticRatings,
+    optimisticRating: optimisticRating,
     optimisticStars: optimisticStars,
     optimisticPairState: optimisticPairState,
     optimisticViews: optimisticViews,

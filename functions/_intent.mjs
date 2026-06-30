@@ -21,8 +21,13 @@ export function secretOk(provided, expected) {
   return timingSafeEqual(a, b);
 }
 
-const KINDS = new Set(["star", "same", "distinct", "dismiss", "revoke",
+const KINDS = new Set(["rate", "star", "same", "distinct", "dismiss", "revoke",
   "view_save", "view_delete"]);
+
+// The ordinal triage ratings (#23). Mirrors core.user_state.RATING_RANK keys.
+// null/absent = clear back to unspecified. Extend here (e.g. "love") in lockstep
+// with the Python enum when an intensity tier ships.
+const RATINGS = new Set(["up", "down"]);
 
 function isPair(x) {
   return Array.isArray(x) && x.length === 2 &&
@@ -35,7 +40,12 @@ export function validateIntent(intent) {
   if (!intent || typeof intent !== "object") return "not an object";
   if (typeof intent.id !== "string" || !intent.id) return "missing/empty id";
   if (!KINDS.has(intent.kind)) return `unknown kind ${intent.kind}`;
-  if (intent.kind === "star") {
+  if (intent.kind === "rate") {
+    if (typeof intent.unit !== "string" || !intent.unit) return "rate: missing unit";
+    if (intent.rating != null && !RATINGS.has(intent.rating))
+      return "rate: rating must be up|down|null";
+  } else if (intent.kind === "star") {
+    // legacy positive-only kind — back-compat for in-flight intents (#23).
     if (typeof intent.unit !== "string" || !intent.unit) return "star: missing unit";
     if ("starred" in intent && typeof intent.starred !== "boolean")
       return "star: starred must be bool";
